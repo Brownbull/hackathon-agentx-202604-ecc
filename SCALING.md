@@ -156,6 +156,27 @@ Uploads stored on local Docker volume. Not shared across containers.
 
 ---
 
+## Multi-Ticket Handling
+
+The current system processes incidents individually. At scale, intelligent multi-ticket handling becomes a differentiator:
+
+### Deduplication
+- Before triage, compare new incident against open incidents using text similarity
+- If similarity > 80%, flag as potential duplicate and link to existing incident
+- Implementation: vector embeddings stored in pgvector, cosine similarity search
+
+### Batch Triage
+- During outages, multiple incidents arrive simultaneously about the same root cause
+- Group related incidents by category/component, triage the first one, apply results to the group
+- Reduces LLM calls from N to 1 for correlated incidents
+
+### Priority Queue
+- P1 incidents skip the queue and triage immediately
+- P3/P4 incidents can be batched and triaged in bulk during off-peak hours
+- Implementation: Redis Sorted Sets with severity-based scoring
+
+---
+
 ## Cost Estimates
 
 | Component | Cost (at 1000 incidents/day) |

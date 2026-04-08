@@ -146,7 +146,17 @@
   9. Status moves to `dispatched`
 - **Expected outcome:** Structured triage with severity, root cause hypothesis, 3-8 recommended actions, and 3-5 related Solidus source files
 
-### Use Case 2: Incident Resolution
+### Use Case 2: Automated Infrastructure Alert
+
+- **Trigger:** Monitoring system detects anomaly and submits via API
+- **Steps:**
+  1. Infrastructure alert POSTs to `/api/incidents` with description and reporter_email set to the monitoring system
+  2. Guardrail validates (automated alerts are clean — low injection risk)
+  3. Incident stored, ready for triage
+  4. Triage can be triggered manually by SRE or automated via webhook
+- **Expected outcome:** Same structured triage as human-reported incidents. The agent treats all inputs equally — reporter can be a human (QA, L1 support, end-user) or an automated system.
+
+### Use Case 3: Incident Resolution
 
 - **Trigger:** On-call engineer resolves the incident
 - **Steps:**
@@ -157,7 +167,7 @@
   5. Reporter receives email notification about resolution
 - **Expected outcome:** Full lifecycle tracking from submission to resolution with reporter notification
 
-### Use Case 3: Security Guardrail
+### Use Case 4: Security Guardrail
 
 - **Trigger:** Attacker submits prompt injection as incident description
 - **Steps:**
@@ -242,7 +252,32 @@ See [SCALING.md](SCALING.md) for full analysis.
 
 ---
 
-## 9. Lessons Learned & Team Reflections
+## 9. Scope Decisions
+
+### What we cover
+- **Single-incident triage pipeline:** Submit → guardrail → triage → dispatch → resolve. Complete lifecycle with reporter notification.
+- **Code-aware triage:** Agent reads the actual Solidus codebase and references specific files in its analysis.
+- **Security:** Prompt injection detection blocks malicious input before it reaches the LLM. PII is flagged. Rate limiting protects against abuse.
+- **Observability:** Every pipeline stage is traced. LLM calls logged in Langfuse with token usage and latency.
+
+### What we don't cover (and why)
+- **Multi-ticket correlation / deduplication:** Would require embedding-based similarity search. Out of scope for 48-hour hackathon but straightforward to add with a vector store.
+- **Multimodal image analysis:** Claude supports it. We pass file metadata but don't send images to the model. Would improve triage for screenshot-based reports.
+- **Real integrations (Jira, Slack, SendGrid):** Mocked intentionally. The content is fully generated — connecting to real APIs is configuration, not engineering.
+- **Running the e-commerce app:** We read the Solidus codebase for context but don't run it. Running it would enable live error reproduction but isn't required.
+- **Multiple e-commerce codebases:** Currently indexes only Solidus. Supporting multiple repos would require a codebase selector and per-repo indexes.
+
+### What we'd add next (with 1 more week)
+1. Vector embeddings for codebase search (replace keyword matching)
+2. Incident deduplication (flag similar open incidents before triage)
+3. Real Slack/Jira integration (replace mock dispatch)
+4. Multimodal triage (send screenshots to Claude)
+5. Automated triage trigger (skip manual button, triage on submit)
+6. Runbook suggestions (match incident to existing runbooks)
+
+---
+
+## 10. Lessons Learned & Team Reflections
 
 - **What worked well:**
   - `tool_use` with forced tool choice produces highly reliable structured output — never had to handle malformed JSON
