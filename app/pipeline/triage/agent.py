@@ -219,7 +219,7 @@ async def run_triage(
     logger.info("Running triage agent (description length: %d chars)", len(description))
 
     response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-haiku-4-5-20251001",
         max_tokens=2048,
         system=TRIAGE_SYSTEM_PROMPT,
         tools=[TRIAGE_TOOL],

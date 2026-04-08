@@ -173,6 +173,12 @@ async def triage_incident(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
+    if incident.status in (IncidentStatus.DISPATCHED, IncidentStatus.RESOLVED):
+        raise HTTPException(
+            status_code=409,
+            detail="Incident already triaged",
+        )
+
     if not settings.anthropic_api_key:
         raise HTTPException(
             status_code=503,
