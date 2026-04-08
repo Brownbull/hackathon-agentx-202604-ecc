@@ -30,11 +30,15 @@ def check_rate_limit(reporter_email: str) -> RateLimitResult:
     now = time.time()
     window_start = now - WINDOW_SECONDS
 
-    # Clean old entries
+    # Clean old entries for this email
     timestamps = _submissions[reporter_email]
-    _submissions[reporter_email] = [t for t in timestamps if t > window_start]
+    active = [t for t in timestamps if t > window_start]
+    if active:
+        _submissions[reporter_email] = active
+    else:
+        _submissions.pop(reporter_email, None)  # reclaim memory for stale emails
 
-    current = len(_submissions[reporter_email])
+    current = len(_submissions.get(reporter_email, []))
 
     if current >= MAX_INCIDENTS_PER_HOUR:
         oldest = min(_submissions[reporter_email])

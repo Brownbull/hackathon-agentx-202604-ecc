@@ -34,13 +34,18 @@ INJECTION_PATTERNS: list[tuple[str, float]] = [
 ]
 
 # --- PII patterns ---
+# High-confidence PII (always flag)
 PII_PATTERNS: dict[str, str] = {
-    "email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-    "phone": r"\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
     "ssn": r"\b\d{3}-\d{2}-\d{4}\b",
     "credit_card": r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
-    "ip_address": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
     "api_key": r"(?:sk|pk|api|key|token|secret)[-_]?[a-zA-Z0-9]{16,}",
+    "phone": r"\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
+}
+
+# Low-confidence PII (expected in SRE incident reports — flag separately)
+PII_PATTERNS_LOW: dict[str, str] = {
+    "email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    "ip_address": r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b",
 }
 
 # Max description length (bytes)
@@ -61,6 +66,8 @@ def check_injection(text: str) -> tuple[float, list[str]]:
     """Scan text for prompt injection patterns.
 
     Returns (score, matched_patterns) where score is 0.0-1.0.
+    Uses max pattern score boosted by number of distinct matches:
+    each additional match adds 10% of the remaining gap to 1.0.
     """
     text_lower = text.lower()
     max_score = 0.0
@@ -71,15 +78,28 @@ def check_injection(text: str) -> tuple[float, list[str]]:
             max_score = max(max_score, weight)
             matches.append(pattern[:40])
 
+    # Boost score when multiple patterns match (combined signal)
+    if len(matches) > 1:
+        boost = (1.0 - max_score) * 0.10 * (len(matches) - 1)
+        max_score = min(max_score + boost, 1.0)
+
     return max_score, matches
 
 
 def check_pii(text: str) -> list[str]:
-    """Scan text for PII patterns. Returns list of detected PII types."""
+    """Scan text for PII patterns. Returns list of detected PII types.
+
+    High-confidence PII (SSN, credit card, API key, phone) is always flagged.
+    Low-confidence PII (email, IP) is common in SRE reports and tagged with
+    a '_low' suffix so callers can treat it differently.
+    """
     found: list[str] = []
     for pii_type, pattern in PII_PATTERNS.items():
         if re.search(pattern, text):
             found.append(pii_type)
+    for pii_type, pattern in PII_PATTERNS_LOW.items():
+        if re.search(pattern, text):
+            found.append(f"{pii_type}_low")
     return found
 
 
