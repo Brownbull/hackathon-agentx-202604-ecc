@@ -25,6 +25,19 @@
     </div>
 
     <div class="form-group">
+        <label for="reporter_team">Reporting Team</label>
+        <select id="reporter_team" name="reporter_team">
+            <option value="other">&#128101; Other</option>
+            <option value="payments-team">&#128179; Payments Team</option>
+            <option value="platform-team">&#9881; Platform Team</option>
+            <option value="frontend-team">&#127912; Frontend Team</option>
+            <option value="infrastructure-team">&#9729; Infrastructure Team</option>
+            <option value="security-team">&#128274; Security Team</option>
+            <option value="fulfillment-team">&#128230; Fulfillment Team</option>
+        </select>
+    </div>
+
+    <div class="form-group">
         <label for="description">Incident Description *</label>
         <textarea id="description" name="description" rows="6" required minlength="10"
                   placeholder="Describe what happened, what you expected, and any error messages you saw..."></textarea>
@@ -39,10 +52,10 @@
 
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">
-            Submit Incident
+            &#128640; Submit Incident
             <span id="submit-spinner" class="htmx-indicator spinner"></span>
         </button>
-        <a href="/incidents" class="btn btn-secondary">Cancel</a>
+        <a href="/incidents" class="btn btn-secondary">&#8592; Cancel</a>
     </div>
 </form>
 
@@ -57,10 +70,9 @@
             var shortId = id.substring(0, 8);
             resultDiv.innerHTML =
                 '<div class="alert alert-success">' +
-                    '<strong>Incident registered</strong> &mdash; ID: <code>' + shortId + '</code>' +
-                    '<br><a href="/incidents/' + id + '" class="alert-link">View incident &amp; run triage &rarr;</a>' +
+                    '<strong>&#10003; Incident registered</strong> &mdash; ID: <code>' + shortId + '</code>' +
+                    '<br><a href="/incidents/' + id + '" class="alert-link">&#128270; View incident &amp; run triage &rarr;</a>' +
                 '</div>';
-            // Also reset the form
             document.getElementById('incident-form').reset();
         } else {
             var msg = 'Something went wrong. Please try again.';
@@ -69,7 +81,7 @@
                 msg = err.detail || msg;
             } catch(e) {}
             resultDiv.innerHTML =
-                '<div class="alert alert-error">' + msg + '</div>';
+                '<div class="alert alert-error">&#9888; ' + msg + '</div>';
         }
     });
 </script>

@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    <a href="/incidents" class="btn btn-ghost">&larr; Back</a>
+    <a href="/incidents" class="btn btn-ghost">&#8592; Back</a>
     <h1>
         Incident
         <span class="status-badge status-{{ incident.status.value }}">{{ incident.status.value }}</span>
@@ -14,133 +14,131 @@
     </h1>
 </div>
 
-<div class="detail-grid">
-    <!-- Left column: incident info -->
-    <div class="detail-card">
-        <h2>Report</h2>
-        <div class="detail-meta">
-            <span><strong>Reporter:</strong> {{ incident.reporter_email }}{% if incident.reporter_name %} ({{ incident.reporter_name }}){% endif %}</span>
-            <span><strong>Created:</strong> {{ incident.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
-            <span><strong>Updated:</strong> {{ incident.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
-        </div>
-        <div class="description-block">
-            {{ incident.description }}
-        </div>
+<!-- Report -->
+<div class="detail-card">
+    <h2>Report</h2>
+    <div class="detail-meta">
+        <span><strong>Reporter:</strong> {{ incident.reporter_email }}{% if incident.reporter_name %} ({{ incident.reporter_name }}){% endif %}</span>
+        <span><strong>Created:</strong> {{ incident.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+        <span><strong>Updated:</strong> {{ incident.updated_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+    </div>
+    <div class="description-block">
+        {{ incident.description }}
+    </div>
 
-        {% if incident.attachments %}
-        <h3>Attachments ({{ incident.attachments | length }})</h3>
-        <ul class="attachment-list">
-            {% for att in incident.attachments %}
+    {% if incident.attachments %}
+    <h3>Attachments ({{ incident.attachments | length }})</h3>
+    <ul class="attachment-list">
+        {% for att in incident.attachments %}
+        <li>
+            <span class="attachment-icon">&#128206;</span>
+            {{ att.filename }}
+            <small style="color: var(--fg-subtle)">({{ (att.file_size / 1024) | round(1) }}KB, {{ att.mime_type }})</small>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+<!-- Triage Results -->
+<div class="detail-card" id="triage-panel" style="margin-top: 1.5rem;">
+    <h2>Triage Results</h2>
+    {% if incident.technical_summary %}
+    <div class="triage-section">
+        <h3>Summary</h3>
+        <p>{{ incident.technical_summary }}</p>
+    </div>
+
+    {% if incident.category %}
+    <div class="triage-section">
+        <h3>Category</h3>
+        <span class="tag">{{ incident.category }}</span>
+    </div>
+    {% endif %}
+
+    {% if incident.affected_component %}
+    <div class="triage-section">
+        <h3>Affected Component</h3>
+        <span class="tag">{{ incident.affected_component }}</span>
+    </div>
+    {% endif %}
+
+    {% if incident.suggested_assignee %}
+    <div class="triage-section">
+        <h3>Assigned To</h3>
+        {{ team_badge(incident.suggested_assignee) }}
+    </div>
+    {% endif %}
+
+    {% if incident.root_cause_hypothesis %}
+    <div class="triage-section">
+        <h3>Root Cause Hypothesis</h3>
+        <p>{{ incident.root_cause_hypothesis }}</p>
+    </div>
+    {% endif %}
+
+    {% if incident.confidence is not none %}
+    <div class="triage-section">
+        <h3>Confidence</h3>
+        <div class="confidence-bar">
+            <div class="confidence-fill" style="width: {{ (incident.confidence * 100) | round }}%"></div>
+            <span>{{ (incident.confidence * 100) | round }}%</span>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if incident.related_files %}
+    <div class="triage-section">
+        <h3>Related Files</h3>
+        <ul class="file-list">
+            {% for file in incident.related_files %}
             <li>
-                <span class="attachment-icon">&#128206;</span>
-                {{ att.filename }}
-                <small style="color: var(--fg-subtle)">({{ (att.file_size / 1024) | round(1) }}KB, {{ att.mime_type }})</small>
+                <code>{{ file.path if file is mapping else file }}</code>
+                {% if file is mapping and file.relevance %}
+                <span class="file-relevance">{{ file.relevance }}</span>
+                {% endif %}
             </li>
             {% endfor %}
         </ul>
-        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if incident.recommended_actions %}
+    <div class="triage-section">
+        <h3>Recommended Actions</h3>
+        <ol class="actions-list">
+            {% for action in incident.recommended_actions %}
+            <li>{{ action }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+    {% endif %}
+
+    {% elif incident.status.value == 'triaging' %}
+    <div class="empty-triage"
+         hx-get="/incidents/{{ incident.id }}"
+         hx-trigger="every 3s"
+         hx-select="#triage-panel"
+         hx-swap="outerHTML">
+        <div class="spinner-large"></div>
+        <p>AI agent is analyzing this incident&hellip;</p>
+        <small style="color: var(--fg-subtle)">Auto-refreshes every 3 seconds</small>
     </div>
 
-    <!-- Right column: triage results -->
-    <div class="detail-card" id="triage-panel">
-        <h2>Triage Results</h2>
-        {% if incident.technical_summary %}
-        <div class="triage-section">
-            <h3>Summary</h3>
-            <p>{{ incident.technical_summary }}</p>
-        </div>
-
-        {% if incident.category %}
-        <div class="triage-section">
-            <h3>Category</h3>
-            <span class="tag">{{ incident.category }}</span>
-        </div>
-        {% endif %}
-
-        {% if incident.affected_component %}
-        <div class="triage-section">
-            <h3>Affected Component</h3>
-            <span class="tag">{{ incident.affected_component }}</span>
-        </div>
-        {% endif %}
-
-        {% if incident.suggested_assignee %}
-        <div class="triage-section">
-            <h3>Assigned To</h3>
-            {{ team_badge(incident.suggested_assignee) }}
-        </div>
-        {% endif %}
-
-        {% if incident.root_cause_hypothesis %}
-        <div class="triage-section">
-            <h3>Root Cause Hypothesis</h3>
-            <p>{{ incident.root_cause_hypothesis }}</p>
-        </div>
-        {% endif %}
-
-        {% if incident.confidence is not none %}
-        <div class="triage-section">
-            <h3>Confidence</h3>
-            <div class="confidence-bar">
-                <div class="confidence-fill" style="width: {{ (incident.confidence * 100) | round }}%"></div>
-                <span>{{ (incident.confidence * 100) | round }}%</span>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if incident.related_files %}
-        <div class="triage-section">
-            <h3>Related Files</h3>
-            <ul class="file-list">
-                {% for file in incident.related_files %}
-                <li>
-                    <code>{{ file.path if file is mapping else file }}</code>
-                    {% if file is mapping and file.relevance %}
-                    <span class="file-relevance">{{ file.relevance }}</span>
-                    {% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-
-        {% if incident.recommended_actions %}
-        <div class="triage-section">
-            <h3>Recommended Actions</h3>
-            <ol class="actions-list">
-                {% for action in incident.recommended_actions %}
-                <li>{{ action }}</li>
-                {% endfor %}
-            </ol>
-        </div>
-        {% endif %}
-
-        {% elif incident.status.value == 'triaging' %}
-        <div class="empty-triage"
-             hx-get="/incidents/{{ incident.id }}"
-             hx-trigger="every 3s"
-             hx-select="#triage-panel"
-             hx-swap="outerHTML">
-            <div class="spinner-large"></div>
-            <p>AI agent is analyzing this incident&hellip;</p>
-            <small style="color: var(--fg-subtle)">Auto-refreshes every 3 seconds</small>
-        </div>
-
-        {% else %}
-        <div class="empty-triage">
-            <p>No triage yet.</p>
-            <button class="btn btn-primary"
-                    hx-post="/api/incidents/{{ incident.id }}/triage"
-                    hx-target="#triage-panel"
-                    hx-swap="outerHTML"
-                    hx-select="#triage-panel"
-                    hx-indicator="#triage-spinner">
-                Run AI Triage
-                <span class="spinner" id="triage-spinner"></span>
-            </button>
-        </div>
-        {% endif %}
+    {% else %}
+    <div class="empty-triage">
+        <p>No triage yet.</p>
+        <button class="btn btn-primary"
+                hx-post="/api/incidents/{{ incident.id }}/triage"
+                hx-target="#triage-panel"
+                hx-swap="outerHTML"
+                hx-select="#triage-panel"
+                hx-indicator="#triage-spinner">
+            &#9889; Run AI Triage
+            <span class="spinner" id="triage-spinner"></span>
+        </button>
     </div>
+    {% endif %}
 </div>
 
 {% if incident.ticket or incident.notifications %}
