@@ -7,16 +7,28 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.database import get_db
 from app.models.incident import Incident
+from app.services.seed_data import seed_database
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="templates")
 
 
+async def _ensure_seed(db: AsyncSession) -> None:
+    """Re-seed if DB is empty in development mode."""
+    if settings.app_env != "development":
+        return
+    count_result = await db.execute(select(func.count(Incident.id)))
+    if count_result.scalar_one() == 0:
+        await seed_database(db)
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request, db: AsyncSession = Depends(get_db)):
     """Home page — shows recent incidents."""
+    await _ensure_seed(db)
     query = (
         select(Incident)
         .options(selectinload(Incident.attachments))
@@ -38,6 +50,7 @@ async def index(request: Request, db: AsyncSession = Depends(get_db)):
 @router.get("/incidents", response_class=HTMLResponse)
 async def incident_list_page(request: Request, db: AsyncSession = Depends(get_db)):
     """List all incidents."""
+    await _ensure_seed(db)
     query = (
         select(Incident)
         .options(selectinload(Incident.attachments))
