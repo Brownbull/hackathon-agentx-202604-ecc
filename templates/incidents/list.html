@@ -8,37 +8,40 @@
 </div>
 
 {% if incidents %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Status</th>
-            <th>Severity</th>
-            <th>Description</th>
-            <th>Reporter</th>
-            <th>Created</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for inc in incidents %}
-        <tr class="clickable-row" onclick="window.location='/incidents/{{ inc.id }}'">
-            <td><span class="status-badge status-{{ inc.status.value }}">{{ inc.status.value }}</span></td>
-            <td>
-                {% if inc.severity %}
-                <span class="severity-badge severity-{{ inc.severity.value }}">{{ inc.severity.value }}</span>
-                {% else %}
-                <span class="severity-badge severity-pending">--</span>
-                {% endif %}
-            </td>
-            <td class="desc-cell">{{ inc.description[:120] }}{% if inc.description|length > 120 %}...{% endif %}</td>
-            <td>{{ inc.reporter_email }}</td>
-            <td class="nowrap">{{ inc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="glass-card" style="padding: 0; overflow: hidden;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Severity</th>
+                <th>Description</th>
+                <th>Reporter</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inc in incidents %}
+            <tr class="clickable-row" onclick="window.location='/incidents/{{ inc.id }}'">
+                <td><span class="status-badge status-{{ inc.status.value }}">{{ inc.status.value }}</span></td>
+                <td>
+                    {% if inc.severity %}
+                    <span class="severity-badge severity-{{ inc.severity.value }}">{{ inc.severity.value }}</span>
+                    {% else %}
+                    <span class="severity-badge severity-pending">&mdash;</span>
+                    {% endif %}
+                </td>
+                <td class="desc-cell">{{ inc.description[:100] }}{% if inc.description|length > 100 %}&hellip;{% endif %}</td>
+                <td style="color: var(--fg-muted)">{{ inc.reporter_email }}</td>
+                <td class="nowrap" style="color: var(--fg-subtle)">{{ inc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% else %}
 <div class="empty-state">
-    <p>No incidents yet.</p>
+    <h1>No incidents yet</h1>
+    <p>When incidents are reported, they'll appear here with AI-powered triage results.</p>
     <a href="/incidents/new" class="btn btn-primary">Report the first incident</a>
 </div>
 {% endif %}

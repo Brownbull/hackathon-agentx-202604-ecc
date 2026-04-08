@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-    <a href="/incidents" class="btn btn-secondary">&larr; Back</a>
+    <a href="/incidents" class="btn btn-ghost">&larr; Back</a>
     <h1>
         Incident
         <span class="status-badge status-{{ incident.status.value }}">{{ incident.status.value }}</span>
@@ -33,7 +33,7 @@
             <li>
                 <span class="attachment-icon">&#128206;</span>
                 {{ att.filename }}
-                <small>({{ (att.file_size / 1024) | round(1) }}KB, {{ att.mime_type }})</small>
+                <small style="color: var(--fg-subtle)">({{ (att.file_size / 1024) | round(1) }}KB, {{ att.mime_type }})</small>
             </li>
             {% endfor %}
         </ul>
@@ -121,8 +121,8 @@
              hx-select="#triage-panel"
              hx-swap="outerHTML">
             <div class="spinner-large"></div>
-            <p>AI agent is analyzing this incident...</p>
-            <small>This page auto-refreshes every 3 seconds.</small>
+            <p>AI agent is analyzing this incident&hellip;</p>
+            <small style="color: var(--fg-subtle)">Auto-refreshes every 3 seconds</small>
         </div>
 
         {% else %}
@@ -146,7 +146,7 @@
 <div class="detail-card ticket-card">
     <h2>Ticket</h2>
     <div class="detail-meta">
-        <span><strong>ID:</strong> <code>{{ incident.ticket.id | string | truncate(8, True, '') }}</code></span>
+        <span><strong>ID:</strong> <code style="background: var(--surface); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.78rem;">{{ incident.ticket.id | string | truncate(8, True, '') }}</code></span>
         <span><strong>Status:</strong> <span class="status-badge status-{{ incident.ticket.status.value }}">{{ incident.ticket.status.value }}</span></span>
         {% if incident.ticket.assignee %}
         <span><strong>Assigned to:</strong> {{ incident.ticket.assignee }}</span>
@@ -172,7 +172,7 @@
             {% for notif in incident.notifications %}
             <tr>
                 <td><span class="tag">{{ notif.type.value }}</span></td>
-                <td>{{ notif.recipient }}</td>
+                <td style="color: var(--fg-muted)">{{ notif.recipient }}</td>
                 <td>
                     {% if notif.sent %}
                     <span class="status-badge status-resolved">sent</span>
@@ -180,7 +180,7 @@
                     <span class="status-badge status-rejected">failed</span>
                     {% endif %}
                 </td>
-                <td class="nowrap">{{ notif.sent_at.strftime('%H:%M:%S') if notif.sent_at else '—' }}</td>
+                <td class="nowrap" style="color: var(--fg-subtle)">{{ notif.sent_at.strftime('%H:%M:%S') if notif.sent_at else '—' }}</td>
             </tr>
             {% endfor %}
         </tbody>

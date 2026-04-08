@@ -4,16 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SRE Triage Agent{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-M06VwgoUOHG3FN0UchwWKqh9jS4ejwpoL0yjF3EVljtsxFwFETEYMkyNL5lXbJ5/" crossorigin="anonymous"></script>
 </head>
 <body>
+    <!-- Ambient background layers -->
+    <div class="ambient-bg">
+        <div class="ambient-blob ambient-blob-1"></div>
+        <div class="ambient-blob ambient-blob-2"></div>
+        <div class="ambient-blob ambient-blob-3"></div>
+        <div class="ambient-grid"></div>
+        <div class="ambient-noise"></div>
+    </div>
+
     <nav class="navbar">
         <div class="container nav-content">
-            <a href="/" class="logo">&#9889; SRE Triage Agent</a>
+            <a href="/" class="logo">
+                <span class="logo-icon">&#9889;</span>
+                SRE Triage
+            </a>
             <div class="nav-links">
                 <a href="/incidents" class="{% if page == 'list' %}active{% endif %}">Incidents</a>
-                <a href="/incidents/new" class="{% if page == 'new' %}active{% endif %}">Report Incident</a>
+                <a href="/incidents/new" class="{% if page == 'new' %}active{% endif %}">Report</a>
             </div>
         </div>
     </nav>
@@ -24,6 +39,7 @@
 
     <footer class="footer">
         <div class="container">
+            <div class="footer-line"></div>
             AgentX Hackathon 2026 &mdash; AI-Powered SRE Incident Triage
         </div>
     </footer>
