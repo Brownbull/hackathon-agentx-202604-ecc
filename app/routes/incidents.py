@@ -18,6 +18,7 @@ from app.pipeline.guardrail.rate_limit import check_rate_limit, record_submissio
 from app.pipeline.triage import run_triage
 from app.schemas.incident import IncidentCreate, IncidentListResponse, IncidentResponse
 from app.services.codebase_indexer import CodebaseIndex
+from app.services.observability import pipeline_span, trace_llm_call
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,8 @@ async def create_incident(
         )
 
     # Guardrail checks
-    guardrail = validate_input(data.description)
+    with pipeline_span("guardrail", {"reporter": data.reporter_email}):
+        guardrail = validate_input(data.description)
     if guardrail.rejected:
         raise HTTPException(status_code=400, detail=guardrail.rejection_reason)
 
@@ -218,17 +220,38 @@ async def triage_incident(
     for att in incident.attachments:
         attachment_descriptions.append(f"{att.filename} ({att.mime_type}, {att.file_size} bytes)")
 
+    import time as _time
+
     try:
-        triage_result = await run_triage(
-            description=incident.description,
-            codebase_index=codebase_index,
-            attachment_descriptions=attachment_descriptions or None,
-        )
+        t0 = _time.monotonic()
+        with pipeline_span("triage", {"incident_id": str(incident_id)}):
+            triage_result = await run_triage(
+                description=incident.description,
+                codebase_index=codebase_index,
+                attachment_descriptions=attachment_descriptions or None,
+            )
+        triage_ms = (_time.monotonic() - t0) * 1000
     except Exception:
         logger.exception("Triage failed for incident %s", incident_id)
         incident.status = IncidentStatus.SUBMITTED  # revert status
         await db.commit()
         raise HTTPException(status_code=502, detail="Triage agent failed")
+
+    # Record LLM call in Langfuse
+    trace_llm_call(
+        incident_id=str(incident_id),
+        model="claude-haiku-4-5-20251001",
+        input_text=incident.description,
+        output_data={
+            "severity": triage_result.severity,
+            "category": triage_result.category,
+            "confidence": triage_result.confidence,
+            "affected_component": triage_result.affected_component,
+        },
+        tokens_in=triage_result.tokens_in,
+        tokens_out=triage_result.tokens_out,
+        duration_ms=triage_ms,
+    )
 
     # Update incident with triage results
     incident.severity = triage_result.severity
@@ -245,20 +268,22 @@ async def triage_incident(
     await db.flush()
 
     # Auto-dispatch: create ticket + notifications
-    dispatch_result = await dispatch_incident(incident, db)
+    with pipeline_span("dispatch", {"incident_id": str(incident_id)}):
+        dispatch_result = await dispatch_incident(incident, db)
 
     await db.refresh(incident)
     await db.refresh(incident, attribute_names=["attachments"])
 
     logger.info(
         "Triage+dispatch complete for %s: severity=%s, confidence=%.2f, "
-        "ticket=%s, tokens=%d/%d",
+        "ticket=%s, tokens=%d/%d, triage_ms=%.0f",
         incident_id,
         triage_result.severity,
         triage_result.confidence,
         dispatch_result.ticket_id,
         triage_result.tokens_in,
         triage_result.tokens_out,
+        triage_ms,
     )
 
     return incident
