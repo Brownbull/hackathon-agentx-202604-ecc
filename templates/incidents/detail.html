@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/teams.html" import team_badge, team_inline, TEAM_INFO %}
+{% from "macros/teams.html" import team_badge, team_inline, team_pill, TEAM_INFO %}
 {% block title %}Incident {{ incident.id | string | truncate(8, True, '') }} — SRE Triage Agent{% endblock %}
 
 {% block content %}
@@ -10,6 +10,9 @@
         <span class="status-badge status-{{ incident.status.value }}">{{ incident.status.value }}</span>
         {% if incident.severity %}
         <span class="severity-badge severity-{{ incident.severity.value }}">{{ incident.severity.value }}</span>
+        {% endif %}
+        {% if incident.suggested_assignee %}
+        {{ team_pill(incident.suggested_assignee) }}
         {% endif %}
     </h1>
 </div>

@@ -533,6 +533,18 @@ main.container { flex: 1; padding-top: 2.5rem; padding-bottom: 4rem; position: r
     display: inline-flex; align-items: center; gap: 0.3rem;
     font-size: 0.85rem;
 }
+.team-pill {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    background: var(--surface-hover);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-full);
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--fg-muted);
+    /* Reset gradient text from h1 parent */
+    -webkit-text-fill-color: var(--fg-muted);
+}
 
 /* === Dispatch Panel === */
 .dispatch-card { margin-top: 1.5rem; }

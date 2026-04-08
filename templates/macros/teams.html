@@ -1,22 +1,28 @@
-{# Team icons and display macro #}
+{# Team icons and display macro — uses actual Unicode, not HTML entities #}
 {%- set TEAM_INFO = {
-    "payments-team":        {"icon": "&#128179;", "label": "Payments Team"},
-    "platform-team":        {"icon": "&#9881;",   "label": "Platform Team"},
-    "frontend-team":        {"icon": "&#127912;", "label": "Frontend Team"},
-    "infrastructure-team":  {"icon": "&#9729;",   "label": "Infrastructure Team"},
-    "security-team":        {"icon": "&#128274;", "label": "Security Team"},
-    "fulfillment-team":     {"icon": "&#128230;", "label": "Fulfillment Team"},
+    "payments-team":        {"icon": "💳", "label": "Payments Team"},
+    "platform-team":        {"icon": "⚙", "label": "Platform Team"},
+    "frontend-team":        {"icon": "🎨", "label": "Frontend Team"},
+    "infrastructure-team":  {"icon": "☁", "label": "Infrastructure Team"},
+    "security-team":        {"icon": "🔒", "label": "Security Team"},
+    "fulfillment-team":     {"icon": "📦", "label": "Fulfillment Team"},
+    "other":                {"icon": "👥", "label": "Other"},
 } -%}
 
 {% macro team_badge(team_key) %}
-{%- set info = TEAM_INFO.get(team_key, {"icon": "&#128101;", "label": team_key}) -%}
+{%- set info = TEAM_INFO.get(team_key, {"icon": "👥", "label": team_key}) -%}
 <span class="team-badge">
     <span class="team-icon">{{ info.icon }}</span>
     <span class="team-name">{{ info.label }}</span>
 </span>
-{% endmacro %}
+{%- endmacro %}
 
 {% macro team_inline(team_key) %}
-{%- set info = TEAM_INFO.get(team_key, {"icon": "&#128101;", "label": team_key}) -%}
+{%- set info = TEAM_INFO.get(team_key, {"icon": "👥", "label": team_key}) -%}
 <span class="team-inline">{{ info.icon }} {{ info.label }}</span>
-{% endmacro %}
+{%- endmacro %}
+
+{% macro team_pill(team_key) %}
+{%- set info = TEAM_INFO.get(team_key, {"icon": "👥", "label": team_key}) -%}
+<span class="team-pill">{{ info.icon }} {{ info.label }}</span>
+{%- endmacro %}
