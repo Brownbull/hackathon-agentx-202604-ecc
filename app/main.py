@@ -12,6 +12,7 @@ from app.routes.pages import router as pages_router
 from app.services.codebase_indexer import build_index
 from app.services.observability import setup_telemetry
 from app.services.seed_data import seed_database
+from app.services.seed_langfuse import seed_langfuse
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,16 @@ async def lifespan(app: FastAPI):
     app.state.codebase_index = build_index(settings.ecommerce_repo_path)
     logger.info("Codebase index ready: %d files", app.state.codebase_index.file_count)
 
-    # Seed sample data in development
+    # Seed in development
     if settings.app_env == "development":
+        # Seed Langfuse account/project/keys
+        keys = seed_langfuse(settings.langfuse_host)
+        if keys:
+            settings.langfuse_public_key = keys["public_key"]
+            settings.langfuse_secret_key = keys["secret_key"]
+            logger.info("Langfuse keys auto-configured from seed")
+
+        # Seed sample incidents
         async with async_session() as db:
             await seed_database(db)
 
