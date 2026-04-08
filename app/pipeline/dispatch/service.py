@@ -128,6 +128,11 @@ async def dispatch_incident(
     severity_str = _severity_str(incident.severity)
     short = _short_id(incident)
     email_subject = f"[{severity_str}] INC-{short}: {title[:50]}"
+    # Mock URLs — in production these would be real app URLs
+    ack_url = f"https://sre-triage.example.com/api/incidents/{incident.id}/acknowledge"
+    reject_url = f"https://sre-triage.example.com/incidents/{incident.id}#reject"
+    detail_url = f"https://sre-triage.example.com/incidents/{incident.id}"
+
     email_body = (
         f"A new {severity_str} incident has been triaged and assigned to your team.\n\n"
         f"Incident ID: {incident.id}\n"
@@ -140,6 +145,16 @@ async def dispatch_incident(
     )
     if incident.recommended_actions:
         email_body += "\n".join(f"  - {a}" for a in incident.recommended_actions)
+
+    email_body += (
+        f"\n\n"
+        f"─────────────────────────────────────────────\n"
+        f"ACTION REQUIRED\n\n"
+        f"  [✓ ACKNOWLEDGE] {ack_url}\n"
+        f"  [✗ NOT MY TEAM] {reject_url}\n\n"
+        f"  View incident:  {detail_url}\n"
+        f"─────────────────────────────────────────────\n"
+    )
 
     email_notification = Notification(
         incident_id=incident.id,
@@ -163,7 +178,11 @@ async def dispatch_incident(
         f"Assigned: {assignee}\n"
         f"Incident: {incident.id}\n"
         f"Ticket: {ticket.id}\n"
-        f"Confidence: {(incident.confidence or 0) * 100:.0f}%"
+        f"Confidence: {(incident.confidence or 0) * 100:.0f}%\n"
+        f"\n"
+        f"[✓ Acknowledge]({ack_url}) · "
+        f"[✗ Not my team]({reject_url}) · "
+        f"[View details]({detail_url})"
     )
 
     chat_notification = Notification(
