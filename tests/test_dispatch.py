@@ -61,6 +61,10 @@ async def test_triage_creates_ticket(client, monkeypatch):
     assert "Ticket created" in html
     assert "payments-team" in html
 
+    # Verify incident ID appears in dispatch outputs
+    short_id = incident_id[:8]
+    assert f"INC-{short_id}" in html or incident_id in html
+
 
 async def test_triage_creates_notifications(client, monkeypatch):
     """Triage auto-sends email and chat notifications."""
@@ -86,7 +90,7 @@ async def test_triage_creates_notifications(client, monkeypatch):
 
     assert resp.status_code == 200
 
-    # Check dispatch panel shows notifications
+    # Check dispatch panel shows notifications with incident ID
     detail_resp = await client.get(f"/incidents/{incident_id}")
     html = detail_resp.text
     assert "Dispatch Actions" in html
@@ -94,6 +98,7 @@ async def test_triage_creates_notifications(client, monkeypatch):
     assert "Chat notification sent" in html
     assert "#incidents" in html
     assert "Mock integrations" in html
+    assert incident_id in html  # Full ID appears in dispatch details
 
 
 async def test_full_e2e_flow(client, monkeypatch):

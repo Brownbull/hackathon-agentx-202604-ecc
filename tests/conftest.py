@@ -43,3 +43,17 @@ async def client():
             await conn.execute(text(f"DELETE FROM {table}"))
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def db_session():
+    """Provide a clean async DB session for unit tests (no HTTP client needed)."""
+    async with _test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with _test_session() as session:
+        yield session
+
+    async with _test_engine.begin() as conn:
+        for table in ["incident_attachments", "notifications", "tickets", "incidents"]:
+            await conn.execute(text(f"DELETE FROM {table}"))

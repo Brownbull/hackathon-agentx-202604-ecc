@@ -179,3 +179,43 @@ async def test_incident_not_found_page(client):
     resp = await client.get(f"/incidents/{fake_id}")
     assert resp.status_code == 404
     assert "Not Found" in resp.text
+
+
+async def test_search_by_partial_id(client):
+    """Search endpoint finds incidents by partial UUID prefix."""
+    create_resp = await client.post(
+        "/api/incidents",
+        data={
+            "reporter_email": "search@example.com",
+            "description": "Test incident for search by partial ID — should be findable.",
+        },
+    )
+    incident_id = create_resp.json()["id"]
+    prefix = incident_id[:8]
+
+    resp = await client.get(f"/incidents/search?q={prefix}")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+    assert prefix in resp.text
+    assert "search@example.com" in resp.text
+
+
+async def test_search_empty_query(client):
+    """Search with empty query returns page with no results."""
+    resp = await client.get("/incidents/search?q=")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+
+
+async def test_search_no_match(client):
+    """Search with non-existent prefix returns empty results."""
+    resp = await client.get("/incidents/search?q=00000000")
+    assert resp.status_code == 200
+    assert "0 results" in resp.text or "Showing" in resp.text
+
+
+async def test_search_sanitizes_input(client):
+    """Search strips spaces and special characters."""
+    resp = await client.get("/incidents/search?q=%20%3Cscript%3E")
+    assert resp.status_code == 200
+    assert "<script>" not in resp.text
