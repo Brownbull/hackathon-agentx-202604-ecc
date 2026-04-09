@@ -181,8 +181,10 @@ body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .panel-body { padding: 14px; }
+.section-icon { width: 18px; height: 18px; image-rendering: pixelated; vertical-align: middle; margin-right: 4px; }
 
 .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.detail-stack { display: flex; flex-direction: column; gap: 12px; }
 
 /* ======================== VIEW 1: INCIDENTS LIST ======================== */
 .incidents-table { width: 100%; border-collapse: collapse; }

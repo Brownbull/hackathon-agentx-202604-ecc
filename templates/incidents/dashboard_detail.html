@@ -31,7 +31,12 @@
   {% if incident.status.value == 'submitted' %}
   <button class="btn-top btn-top-primary" id="btn-triage" onclick="runTriage('{{ incident.id }}')" data-testid="btn-triage">Run Triage</button>
   {% elif incident.status.value == 'dispatched' %}
-  <button class="btn-top" onclick="acknowledgeIncident('{{ incident.id }}')" data-testid="btn-acknowledge">Acknowledge</button>
+    {% set is_acknowledged = incident.ticket and incident.ticket.status.value == 'in_progress' %}
+    {% if is_acknowledged %}
+    <span class="badge badge-resolved" style="padding:4px 12px">Acknowledged</span>
+    {% else %}
+    <button class="btn-top" onclick="acknowledgeIncident('{{ incident.id }}')" data-testid="btn-acknowledge">Acknowledge</button>
+    {% endif %}
   <button class="btn-top btn-top-primary" onclick="openResolveDialog()" data-testid="btn-resolve">Resolve</button>
   {% endif %}
 </div>
@@ -98,9 +103,9 @@
   {% endif %}
 
   <!-- Description + Root Cause -->
-  <div class="compact-grid">
+  <div class="detail-stack">
     <div class="panel">
-      <div class="panel-header">Description</div>
+      <div class="panel-header"><img src="/static/icons/section-description.png" class="section-icon"> Description</div>
       <div class="panel-body">
         <p class="desc-text">{{ incident.description }}</p>
         {% if incident.affected_component %}
@@ -118,7 +123,7 @@
       </div>
     </div>
     <div class="panel">
-      <div class="panel-header">Root Cause Hypothesis</div>
+      <div class="panel-header"><img src="/static/icons/section-rootcause.png" class="section-icon"> Root Cause Hypothesis</div>
       <div class="panel-body">
         {% if incident.root_cause_hypothesis %}
         <p class="desc-text">{{ incident.root_cause_hypothesis }}</p>
@@ -133,7 +138,7 @@
   <!-- Explanation Layers -->
   <div class="panel" style="margin-top: 12px;" data-testid="explanation-layers">
     <div class="panel-header">
-      Explanation Layers
+      <img src="/static/icons/section-explain.png" class="section-icon"> Explanation Layers
       <div class="explain-tabs">
         <button class="explain-tab active" onclick="switchExplainTab('general', this)">General</button>
         <button class="explain-tab" onclick="switchExplainTab('specialist', this)">Specialist</button>
@@ -156,9 +161,9 @@
 
   {% if incident.related_files or incident.recommended_actions %}
   <!-- Related Files + Actions -->
-  <div class="compact-grid" style="margin-top: 12px;">
+  <div class="detail-stack" style="margin-top: 12px;">
     <div class="panel">
-      <div class="panel-header">Related Files <span style="font-size:10px;opacity:0.6">{{ (incident.related_files or [])|length }} files</span></div>
+      <div class="panel-header"><img src="/static/icons/section-files.png" class="section-icon"> Related Files <span style="font-size:10px;opacity:0.6">{{ (incident.related_files or [])|length }} files</span></div>
       <div class="panel-body" style="padding:0">
         <table class="file-table" data-testid="related-files">
           {% for f in incident.related_files or [] %}
@@ -173,7 +178,7 @@
       </div>
     </div>
     <div class="panel">
-      <div class="panel-header">Recommended Actions <span style="font-size:10px;opacity:0.6">{{ (incident.recommended_actions or [])|length }} items</span></div>
+      <div class="panel-header"><img src="/static/icons/section-actions.png" class="section-icon"> Recommended Actions <span style="font-size:10px;opacity:0.6">{{ (incident.recommended_actions or [])|length }} items</span></div>
       <div class="panel-body" style="padding:0">
         <ul class="action-compact" data-testid="recommended-actions">
           {% for action in incident.recommended_actions or [] %}
@@ -190,10 +195,10 @@
   {% if incident.ticket or incident.notifications %}
   <!-- Dispatch (expandable cards) -->
   <div class="panel" style="margin-top: 12px;">
-    <div class="panel-header">Dispatch <span style="font-size:10px;opacity:0.6">{{ (1 if incident.ticket else 0) + (incident.notifications or [])|length }} actions</span></div>
+    <div class="panel-header"><img src="/static/icons/section-dispatch.png" class="section-icon"> Dispatch <span style="font-size:10px;opacity:0.6">{{ (1 if incident.ticket else 0) + (incident.notifications or [])|length }} actions</span></div>
     <div class="panel-body" style="padding:0">
       {% if incident.ticket %}
-      <details class="dispatch-expandable" data-testid="dispatch-ticket">
+      <details class="dispatch-expandable" data-testid="dispatch-ticket" open>
         <summary class="dispatch-summary">
           <span class="dispatch-dot"></span>
           <span class="dispatch-title">Ticket created &rarr; {{ incident.suggested_assignee|default('Team')|replace('-team','')|capitalize }}</span>
@@ -210,7 +215,7 @@
       </details>
       {% endif %}
       {% for notif in incident.notifications or [] %}
-      <details class="dispatch-expandable" data-testid="dispatch-{{ notif.type.value }}">
+      <details class="dispatch-expandable" data-testid="dispatch-{{ notif.type.value }}" open>
         <summary class="dispatch-summary">
           <span class="dispatch-dot"></span>
           <span class="dispatch-title">{{ notif.type.value|capitalize }} {% if notif.sent %}sent{% else %}pending{% endif %}</span>
@@ -234,7 +239,7 @@
   {% if incident.resolved_at %}
   <!-- Resolution -->
   <div class="panel" style="margin-top: 12px;">
-    <div class="panel-header">Resolution</div>
+    <div class="panel-header"><img src="/static/icons/section-resolution.png" class="section-icon"> Resolution</div>
     <div class="panel-body">
       <p class="desc-text">
         <strong>Type:</strong> {{ incident.resolution_type|default('—')|capitalize }}<br>
