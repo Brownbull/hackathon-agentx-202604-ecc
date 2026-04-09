@@ -31,10 +31,10 @@
 | **20. Anthropic Upgrade** | Knowledge context integration for Premium engine | MUST | ✅ Done | `e33f7a3` | — |
 | **21. Managed Agents** | Real Anthropic Managed Agents API (REST polling) | SHOULD | ✅ Done | `e33f7a3` | — |
 | **22. PII Detection** | detect_pii + sanitize_for_output on all outputs | COULD | ✅ Done | `phase22` | — |
-| **23. Store Engine + Tokens** | Persist engine name, token counts in Incident model | MUST | 🔲 Pending | — | — |
-| **24. Enrich Detail Page** | Pipeline progress, engine badge, expandable dispatch, component | MUST | 🔲 Pending | — | — |
-| **25. Explanation Layers** | General / Specialist / Non-technical views of diagnosis | SHOULD | 🔲 Pending | — | — |
-| **26. Responsive Layout** | Desktop portrait/landscape + mobile (<768px) | SHOULD | 🔲 Pending | — | — |
+| **23. Store Engine + Tokens** | Persist engine name, token counts in Incident model | MUST | ✅ Done | `8fa7d50` | — |
+| **24. Enrich Detail Page** | Pipeline progress, engine badge, expandable dispatch, component | MUST | ✅ Done | `8fa7d50` | — |
+| **25. Explanation Layers** | General / Specialist / Non-technical views of diagnosis | SHOULD | ✅ Done | `8242dcf` | — |
+| **26. Responsive Layout** | Desktop portrait/landscape + mobile (<768px) | SHOULD | ✅ Done | `8242dcf` | — |
 | **12. Demo Video** | 3-min YouTube walkthrough | MUST | 🔲 Pending | — | — |
 
 **Test total: 80 pytest + 16 Playwright E2E**
@@ -65,8 +65,7 @@ Auto-dispatch (ticket + email + chat) → Acknowledge → Resolve → Reporter n
 - Full documentation: README, AGENTS_USE.md, SCALING.md, QUICKGUIDE.md, LICENSE
 
 ### What's remaining
-- **Phase 23-26**: Detail page enrichment + responsive layout
-- **Phase 12**: Demo video recording (last)
+- **Phase 12**: Demo video recording
 
 ---
 
