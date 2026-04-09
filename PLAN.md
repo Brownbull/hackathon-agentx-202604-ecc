@@ -803,6 +803,39 @@ For each remaining phase:
 
 ---
 
+## Future Improvements — Dependency Analysis (Apr 9, 2026)
+
+Based on a Python dependency analysis of the `app/` module (37 modules, 75 edges, [full report](dependency-diagrams/ANALYSIS-REPORT.md)).
+
+### Enterprise-Level Improvements
+
+| # | Finding | Criticality | Effort | What to do |
+|---|---------|-------------|--------|------------|
+| 1 | **Triage provider circular deps** (4 cycles: `agent ↔ provider ↔ concrete_providers`) | Medium | 30 min | Extract `TriageResult`, `RelatedFile`, `TRIAGE_SYSTEM_PROMPT`, `TRIAGE_TOOL` into `app/pipeline/triage/types.py`. Both `agent.py` and all providers import from `types.py` — breaks the cycle into a DAG. Currently mitigated by function-scoped lazy imports but blocks clean static analysis and isolated testing. |
+| 2 | **Fat controller** (`routes/incidents.py` — 557 lines, fan-out 12) | Medium | 1 hr | Extract the `triage_incident` orchestration (230 lines of provider fallback, timing, Langfuse tracing, error classification) into `app/pipeline/orchestrator.py`. Move attachment serving to `app/routes/attachments.py`. Drops the file to ~200 lines with clean route handlers that delegate to services. |
+
+### Scale-Level Improvements
+
+| # | Finding | Criticality | Effort | What to do |
+|---|---------|-------------|--------|------------|
+| 3 | **Model ORM circular deps** (2 cycles: `incident ↔ notification`, `incident ↔ ticket`) | Low | None | Already correctly guarded with `TYPE_CHECKING` + string-based `relationship()`. This is idiomatic SQLAlchemy. No action needed unless migrating to 50+ models. |
+| 4 | **Layer violation** (`services/seed_data.py` → `pipeline/dispatch`) | Low | 10 min | Move `seed_data.py` to `app/scripts/` or `app/dev/` — outside the layer hierarchy. Dev-only code with no production impact. |
+
+### Not a Finding
+
+| # | Finding | Note |
+|---|---------|------|
+| 5 | `config.py` fan-in (11 modules depend on it) | Expected and correct — single settings module at the bottom of the dependency graph. |
+
+### Artifacts
+
+- SVG graph: `dependency-diagrams/dependency-graph.svg`
+- DOT source: `dependency-diagrams/dependency-graph.dot`
+- Full report: `dependency-diagrams/ANALYSIS-REPORT.md`
+- Analyzer script: `dependency-diagrams/_analyze.py`
+
+---
+
 ## Commit History
 
 | Commit | Phase | Description |

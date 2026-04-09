@@ -49,12 +49,12 @@ class LangChainProvider:
 
         # with_structured_output returns a TriageResult directly (or dict depending on provider)
         if isinstance(result, TriageResult):
-            result.engine = "langchain"
+            result.engine = "basic"
             return result
 
         # Some providers return a dict — convert
         if isinstance(result, dict):
-            return TriageResult(engine="langchain", **result)
+            return TriageResult(engine="basic", **result)
 
         raise ValueError(f"LangChain provider returned unexpected type: {type(result)}")
 

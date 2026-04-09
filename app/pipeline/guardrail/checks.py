@@ -41,7 +41,7 @@ INJECTION_PATTERNS: list[tuple[str, float]] = [
     (r"javascript\s*:", 0.85),
     (r"on(error|load|click|mouseover)\s*=", 0.85),
     (r"\{\{.*constructor", 0.90),
-    (r"\$\{.*runtime|process|exec", 0.90),
+    (r"\$\{.*(runtime|process|exec)", 0.90),
 ]
 
 # --- PII patterns ---

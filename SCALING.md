@@ -176,6 +176,21 @@ The current system processes incidents individually. At scale, intelligent multi
 
 ---
 
+## Post-Hackathon: E2E Test Coverage Expansion
+
+The current 26 Playwright E2E tests cover the full demo path. These gaps are deferred for post-hackathon hardening:
+
+| Gap | Priority | Judging Criterion |
+|-----|----------|-------------------|
+| Rate limiting — submit 5+ times, verify 429 and user-friendly message | High | Security |
+| File upload via submit form — attach file, verify on detail page | High | Reliability |
+| Engine switching — toggle between Basic/Premium/Experimental | Medium | Context Engineering |
+| Filter/sort on incident list | Low | — |
+| Pagination with >20 incidents | Low | — |
+| Error states — triage failure, API unavailable | Medium | Reliability |
+
+---
+
 ## Cost Estimates
 
 | Component | Cost (at 1000 incidents/day) |
