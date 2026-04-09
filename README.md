@@ -10,7 +10,7 @@ AI-powered SRE Incident Intake & Triage Agent for the [AgentX Hackathon 2026](ht
 
 | Engine | Model | Cost | Speed | Best for |
 |--------|-------|------|-------|----------|
-| **Basic** | Gemini 2.0 Flash (via LangChain) | Free | ~8s | Judges demo, no API cost |
+| **Basic** | Gemini 2.5 Flash (via LangChain) | Lowest cost | ~8s | Budget-friendly, generous free tier |
 | **Premium** | Claude Haiku 4.5 (Anthropic SDK) | ~$0.005 | ~8s | Highest accuracy |
 | **Experimental** | Claude Agent SDK (Managed Agents) | ~$0.02-0.05 | ~3-5 min | Autonomous codebase exploration |
 

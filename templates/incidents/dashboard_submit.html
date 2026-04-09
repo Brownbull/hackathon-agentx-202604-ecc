@@ -39,13 +39,13 @@
               {# --- Card 1: Basic (LangChain) --- #}
               <div class="provider-card {% if not has_langchain %}disabled{% endif %}"
                    data-provider="langchain" onclick="selectProvider(this)" data-testid="provider-langchain">
-                <span class="provider-tag tag-free">Free</span>
+                <span class="provider-tag tag-free">Basic</span>
                 <div style="display:flex;align-items:center;margin-bottom:4px">
                   <span class="provider-check"></span>
                   <span class="provider-name">Basic</span>
                 </div>
-                <div class="provider-model">Gemini 2.0 Flash</div>
-                <div class="provider-desc">LangChain orchestration with Google's free-tier model. Fast, zero API cost.</div>
+                <div class="provider-model">Gemini 2.5 Flash</div>
+                <div class="provider-desc">LangChain orchestration with Google Gemini. Lowest cost option with generous free tier.</div>
                 {% if not has_langchain %}
                 <div style="font-size:10px;color:var(--red);margin-top:6px">Requires GOOGLE_API_KEY</div>
                 {% endif %}
