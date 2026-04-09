@@ -321,6 +321,29 @@ body {
 /* ======================== VIEW 3: CHAT VIEW ======================== */
 .chat-timeline { display: flex; flex-direction: column; gap: 12px; max-width: 680px; }
 
+/* Chat input bar (coming soon) */
+.chat-input-bar {
+  max-width: 680px; margin-top: 16px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.chat-input-wrapper {
+  display: flex; gap: 8px; align-items: center;
+}
+.chat-input {
+  flex: 1; padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--panel);
+  color: var(--text-dim); font-size: 13px; font-family: var(--sans);
+  opacity: 0.6; cursor: not-allowed;
+}
+.chat-send-btn {
+  width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--panel); color: var(--text-dim); cursor: not-allowed;
+  display: flex; align-items: center; justify-content: center; opacity: 0.5;
+}
+.chat-input-notice {
+  display: flex; align-items: center; margin-top: 8px;
+}
+
 .msg { display: flex; gap: 10px; animation: viewIn 0.4s var(--spring) both; }
 .msg-ai { flex-direction: row; }
 .msg-user { flex-direction: row-reverse; }

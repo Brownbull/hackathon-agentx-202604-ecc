@@ -39,28 +39,172 @@
 <div class="view-animate">
   <div class="chat-timeline" data-testid="chat-timeline">
 
-    {# System pill: incident context #}
+    {# 1. System pill: Incident submitted #}
     <div class="msg-system">
       <span class="system-pill">
         <span class="system-dot system-dot-green"></span>
-        INC-{{ short_id[:8] }} &bull; {{ incident.reporter_email }} &bull; {{ incident.created_at.strftime('%H:%M UTC') }}
+        Incident submitted by {{ incident.reporter_email }} &bull; {{ incident.created_at.strftime('%H:%M UTC') }}
       </span>
     </div>
 
-    {# Coming soon placeholder #}
-    <div style="text-align:center; padding: 60px 20px;">
-      <div style="font-size:32px; margin-bottom:12px; opacity:0.3;">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:inline"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      </div>
-      <div style="font-size:16px; font-weight:600; color:var(--text-bright); margin-bottom:6px;">Interactive Chat</div>
-      <div style="font-size:13px; color:var(--text-dim); max-width:360px; margin:0 auto; line-height:1.6;">
-        Conversational interface for real-time incident collaboration between engineers and the AI triage agent. Ask follow-up questions, request deeper analysis, or update incident status through natural language.
-      </div>
-      <div style="margin-top:16px;">
-        <span class="badge" style="background:rgba(59,130,246,0.1); color:var(--accent); font-size:11px; padding:4px 12px;">Coming Soon</span>
+    {# 2. User bubble: description #}
+    <div class="msg msg-user">
+      <div class="msg-avatar avatar-user">{{ incident.reporter_email[:3]|upper }}</div>
+      <div class="msg-body">
+        <div class="msg-meta">{{ incident.reporter_name or incident.reporter_email }} &bull; {{ incident.created_at.strftime('%H:%M') }}</div>
+        <div class="bubble bubble-user">{{ incident.description }}</div>
       </div>
     </div>
 
+    {# 3. System pill: Guardrail #}
+    {% if incident.injection_score is not none %}
+    <div class="msg-system">
+      <span class="system-pill">
+        <span class="system-dot system-dot-green"></span>
+        Guardrail passed &mdash; injection: {{ (incident.injection_score * 100)|int }}%, {{ 'clean' if (incident.validation_flags or {}).get('passed', true) else 'flagged' }}
+      </span>
+    </div>
+    {% endif %}
+
+    {% if incident.severity %}
+    {# 4. System pill: Triage started #}
+    <div class="msg-system">
+      <span class="system-pill">
+        <span class="system-dot system-dot-blue"></span>
+        AI triage started &bull; {{ triage_provider|default('anthropic') }}
+      </span>
+    </div>
+
+    {# 5. AI bubble: Triage Assessment #}
+    <div class="msg msg-ai">
+      <div class="msg-avatar avatar-ai">AI</div>
+      <div class="msg-body">
+        <div class="msg-meta">Triage Agent &bull; Assessment</div>
+        <div class="bubble bubble-ai">
+          {{ incident.technical_summary[:200] if incident.technical_summary else 'Triage assessment generated.' }}
+          <div class="context-card">
+            <h4>Triage Assessment</h4>
+            <div class="data-row"><span class="data-label">Severity</span><span class="data-value {% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% endif %}" style="color: var(--{% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% else %}accent{% endif %})">{{ incident.severity.value }}</span></div>
+            <div class="data-row"><span class="data-label">Category</span><span class="data-value">{{ incident.category|default('—')|replace('-',' ')|title }}</span></div>
+            <div class="data-row"><span class="data-label">Component</span><span class="data-value">{{ incident.affected_component|default('—') }}</span></div>
+            <div class="data-row"><span class="data-label">Confidence</span><span class="data-value" style="color:var(--green)">{{ (incident.confidence * 100)|int if incident.confidence else 0 }}%</span></div>
+            <div class="data-row"><span class="data-label">Assigned</span><span class="data-value">{{ incident.suggested_assignee|default('—')|replace('-team','')|capitalize }} Team</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# 6. AI bubble: Root Cause + Related Files #}
+    <div class="msg msg-ai">
+      <div class="msg-avatar avatar-ai">AI</div>
+      <div class="msg-body">
+        <div class="msg-meta">Triage Agent &bull; Root Cause</div>
+        <div class="bubble bubble-ai">
+          <strong>Root cause hypothesis:</strong> {{ incident.root_cause_hypothesis|default('Analysis pending.') }}
+          {% if incident.related_files %}
+          <div class="context-card">
+            <h4>Related Solidus Files</h4>
+            <div class="file-chips">
+              {% for f in incident.related_files %}
+              <span class="file-chip">{{ f.path }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# 7. AI bubble: Recommended Actions #}
+    {% if incident.recommended_actions %}
+    <div class="msg msg-ai">
+      <div class="msg-avatar avatar-ai">AI</div>
+      <div class="msg-body">
+        <div class="msg-meta">Triage Agent &bull; Actions</div>
+        <div class="bubble bubble-ai">
+          Recommended actions for the on-call engineer:
+          <ul class="action-check">
+            {% for action in incident.recommended_actions %}
+            <li><span class="check-box"></span> {{ action }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {# 8. System pill: Dispatch completed #}
+    {% if incident.ticket or incident.notifications %}
+    <div class="msg-system">
+      <span class="system-pill">
+        <span class="system-dot system-dot-green"></span>
+        Auto-dispatch completed
+      </span>
+    </div>
+
+    {# 9. AI bubble: Dispatch cards #}
+    <div class="msg msg-ai">
+      <div class="msg-avatar avatar-ai">AI</div>
+      <div class="msg-body">
+        <div class="msg-meta">Dispatch Agent &bull; Notifications</div>
+        <div class="bubble bubble-ai">
+          {{ incident.suggested_assignee|default('Team')|replace('-team','')|capitalize }} team notified through all channels:
+          <div class="dispatch-chat">
+            {% if incident.ticket %}
+            <div class="dispatch-chat-card">
+              <div class="dc-label">Ticket</div>
+              <div class="dc-target">{{ incident.suggested_assignee|default('Team')|replace('-team','')|capitalize }}</div>
+              <div class="dc-status">{{ incident.ticket.status.value|capitalize }}</div>
+            </div>
+            {% endif %}
+            {% for notif in incident.notifications or [] %}
+            <div class="dispatch-chat-card">
+              <div class="dc-label">{{ notif.type.value|capitalize }}</div>
+              <div class="dc-target">{{ notif.recipient[:20] }}</div>
+              <div class="dc-status">{{ 'Sent' if notif.sent else 'Pending' }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {# 10. System pill: Resolved #}
+    {% if incident.resolved_at %}
+    <div class="msg-system">
+      <span class="system-pill">
+        <span class="system-dot system-dot-green"></span>
+        Incident resolved at {{ incident.resolved_at.strftime('%H:%M UTC') }} &bull; {{ incident.resolution_type|default('fix')|capitalize }}
+      </span>
+    </div>
+    {% endif %}
+
+    {# Pre-triage state #}
+    {% if not incident.severity and incident.status.value == 'submitted' %}
+    <div class="msg-system">
+      <span class="system-pill">
+        <span class="system-dot system-dot-blue"></span>
+        Awaiting triage &mdash; click "Run Triage" to analyze
+      </span>
+    </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Chat input bar (coming soon) -->
+  <div class="chat-input-bar" data-testid="chat-input-bar">
+    <div class="chat-input-wrapper">
+      <input type="text" class="chat-input" placeholder="Ask the triage agent a follow-up question..." disabled>
+      <button class="chat-send-btn" disabled title="Coming soon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9z"/></svg>
+      </button>
+    </div>
+    <div class="chat-input-notice">
+      <span class="badge" style="background:rgba(59,130,246,0.1);color:var(--accent);font-size:10px;padding:2px 8px;">Coming Soon</span>
+      <span style="font-size:11px;color:var(--text-dim);margin-left:6px;">Interactive conversation with the triage agent</span>
+    </div>
   </div>
 </div>
 
