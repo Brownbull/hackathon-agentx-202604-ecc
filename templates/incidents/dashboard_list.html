@@ -66,7 +66,7 @@
   </form>
 
   <div class="table-scroll-wrapper">
-    <div class="panel" style="border-radius: 8px; overflow: hidden; min-width: 900px;">
+    <div class="panel" style="border-radius: 8px; overflow: hidden; min-width: 1100px;">
       <table class="incidents-table" data-testid="incidents-table">
         <thead>
           <tr>
@@ -114,7 +114,7 @@
               <span style="color:var(--text-dim);font-size:11px">&mdash;</span>
               {% endif %}
             </td>
-            <td style="color:var(--text-dim)">{{ inc.reporter_email }}</td>
+            <td class="reporter-col">{{ inc.reporter_email }}</td>
             <td class="time-col">{{ inc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
           </tr>
           {% else %}
