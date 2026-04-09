@@ -92,16 +92,57 @@
     if (card) window.selectProvider(card);
   })();
 
-  // ==================== TRIAGE ====================
-  window.runTriage = function(incidentId) {
-    // Find whichever triage button is visible (topbar or panel)
-    var btn = document.getElementById('btn-triage') || document.querySelector('[data-testid="btn-run-triage"]');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="triage-spinner"></span> Triaging...';
-    }
+  // ==================== TRIAGE WITH PROGRESS ====================
+  var triageSteps = ['ts-guardrail', 'ts-context', 'ts-analysis', 'ts-dispatch'];
+  var triageTimers = [];
 
+  function showTriageProgress(engineName) {
+    var overlay = document.getElementById('triage-overlay');
+    var engineLabel = document.getElementById('triage-progress-engine');
+    var statusLabel = document.getElementById('triage-progress-status');
+    var fill = document.getElementById('triage-progress-fill');
+    if (!overlay) return;
+
+    // Reset steps
+    triageSteps.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.classList.remove('active', 'done'); }
+    });
+    fill.style.width = '0%';
+    statusLabel.textContent = 'Starting...';
+    engineLabel.textContent = (engineName || 'AI Engine').charAt(0).toUpperCase() + (engineName || '').slice(1);
+    overlay.classList.add('open');
+
+    // Animate steps on a timer to show progress
+    triageTimers = [];
+    var stepMessages = ['Scanning for injection patterns...', 'Searching Solidus codebase...', 'Analyzing root cause...', 'Creating ticket & notifications...'];
+    triageSteps.forEach(function(id, i) {
+      triageTimers.push(setTimeout(function() {
+        // Mark previous done
+        if (i > 0) document.getElementById(triageSteps[i - 1]).classList.replace('active', 'done');
+        document.getElementById(id).classList.add('active');
+        fill.style.width = ((i + 1) * 25) + '%';
+        statusLabel.textContent = stepMessages[i];
+      }, i * 2500));
+    });
+  }
+
+  function hideTriageProgress() {
+    triageTimers.forEach(clearTimeout);
+    triageTimers = [];
+    var overlay = document.getElementById('triage-overlay');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  window.runTriage = function(incidentId, redirectUrl) {
     var provider = localStorage.getItem('sre-triage-provider') || '';
+    var engineNames = { langchain: 'Basic (Gemini)', anthropic: 'Premium (Claude)', managed: 'Managed Agents' };
+    showTriageProgress(engineNames[provider] || provider);
+
+    // Disable any triage buttons
+    var btn = document.getElementById('btn-triage') || document.querySelector('[data-testid="btn-run-triage"]');
+    if (btn) { btn.disabled = true; }
+
     var url = '/api/incidents/' + incidentId + '/triage';
     if (provider) url += '?provider=' + encodeURIComponent(provider);
 
@@ -110,13 +151,23 @@
         if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail || 'Triage failed'); });
         return r.json();
       })
-      .then(function() { window.location.reload(); })
+      .then(function() {
+        // Complete all steps
+        triageSteps.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) { el.classList.remove('active'); el.classList.add('done'); }
+        });
+        document.getElementById('triage-progress-fill').style.width = '100%';
+        document.getElementById('triage-progress-status').textContent = 'Triage complete — loading results...';
+        setTimeout(function() {
+          hideTriageProgress();
+          window.location.href = redirectUrl || ('/incidents/' + incidentId);
+        }, 800);
+      })
       .catch(function(err) {
+        hideTriageProgress();
         alert('Triage error: ' + err.message);
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = 'Run Triage';
-        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Run Triage'; }
       });
   };
 

@@ -133,6 +133,22 @@
   </div>
 </div>
 
+<!-- Triage progress overlay (shared across all pages) -->
+<div class="triage-overlay" id="triage-overlay">
+  <div class="triage-progress-card">
+    <div class="triage-progress-title">AI Triage in Progress</div>
+    <div class="triage-progress-engine" id="triage-progress-engine"></div>
+    <div class="triage-progress-steps">
+      <div class="triage-step" id="ts-guardrail"><span class="triage-step-dot"></span> Guardrail scan</div>
+      <div class="triage-step" id="ts-context"><span class="triage-step-dot"></span> Loading codebase context</div>
+      <div class="triage-step" id="ts-analysis"><span class="triage-step-dot"></span> AI analysis &amp; reasoning</div>
+      <div class="triage-step" id="ts-dispatch"><span class="triage-step-dot"></span> Dispatching results</div>
+    </div>
+    <div class="triage-progress-bar"><div class="triage-progress-fill" id="triage-progress-fill"></div></div>
+    <div class="triage-progress-status" id="triage-progress-status">Starting...</div>
+  </div>
+</div>
+
 <script src="/static/dashboard.js"></script>
 {% block scripts %}{% endblock %}
 </body>

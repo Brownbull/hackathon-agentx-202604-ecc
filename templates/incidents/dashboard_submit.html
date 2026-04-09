@@ -135,7 +135,8 @@ document.getElementById('submit-form').addEventListener('submit', function(e) {
       return r.json();
     })
     .then(function(data) {
-      window.location.href = '/incidents/' + data.id;
+      // Auto-triage with the selected engine
+      window.runTriage(data.id, '/incidents/' + data.id);
     })
     .catch(function(err) {
       alert('Error: ' + err.message);
