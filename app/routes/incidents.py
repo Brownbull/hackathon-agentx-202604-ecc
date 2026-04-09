@@ -5,6 +5,7 @@ from pathlib import Path
 
 import aiofiles
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -455,3 +456,31 @@ async def resolve_incident(
 
     logger.info("Incident %s resolved: type=%s", incident_id, resolution_type)
     return incident
+
+
+@router.get("/{incident_id}/attachments/{attachment_id}")
+async def get_attachment(
+    incident_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> FileResponse:
+    """Serve an attachment file by ID."""
+    query = select(IncidentAttachment).where(
+        IncidentAttachment.id == attachment_id,
+        IncidentAttachment.incident_id == incident_id,
+    )
+    result = await db.execute(query)
+    attachment = result.scalar_one_or_none()
+
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    file_path = Path(attachment.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Attachment file missing")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=attachment.mime_type,
+        filename=attachment.filename,
+    )

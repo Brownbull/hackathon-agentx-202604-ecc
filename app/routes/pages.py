@@ -58,21 +58,68 @@ async def index(db: AsyncSession = Depends(get_db)):
     return RedirectResponse(url="/incidents", status_code=302)
 
 
+PAGE_SIZE = 20
+
+# Allowed sort columns and their ORM attributes
+_SORT_COLUMNS = {
+    "id": Incident.id,
+    "status": Incident.status,
+    "severity": Incident.severity,
+    "description": Incident.description,
+    "engine": Incident.triage_engine,
+    "reporter": Incident.reporter_email,
+    "created": Incident.created_at,
+}
+
+
 @router.get("/incidents", response_class=HTMLResponse)
-async def incident_list_page(request: Request, db: AsyncSession = Depends(get_db)):
-    """List all incidents."""
+async def incident_list_page(
+    request: Request,
+    page: int = 1,
+    sort: str = "created",
+    order: str = "desc",
+    status: str = "",
+    severity: str = "",
+    engine: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    """List incidents with pagination, sorting, and filtering."""
     await _ensure_seed(db)
-    query = (
-        select(Incident)
-        .options(selectinload(Incident.attachments))
-        .order_by(Incident.created_at.desc())
-        .limit(100)
-    )
+
+    page = max(1, page)
+    offset = (page - 1) * PAGE_SIZE
+
+    # Base query
+    query = select(Incident).options(selectinload(Incident.attachments))
+    count_query = select(func.count(Incident.id))
+
+    # Filters
+    if status:
+        query = query.where(Incident.status == status)
+        count_query = count_query.where(Incident.status == status)
+    if severity:
+        query = query.where(Incident.severity == severity)
+        count_query = count_query.where(Incident.severity == severity)
+    if engine:
+        query = query.where(Incident.triage_engine == engine)
+        count_query = count_query.where(Incident.triage_engine == engine)
+
+    # Sorting
+    sort_col = _SORT_COLUMNS.get(sort, Incident.created_at)
+    if order == "asc":
+        query = query.order_by(sort_col.asc())
+    else:
+        query = query.order_by(sort_col.desc())
+
+    # Total count (filtered)
+    total = (await db.execute(count_query)).scalar_one()
+    total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
+
+    # Paginate
+    query = query.offset(offset).limit(PAGE_SIZE)
     result = await db.execute(query)
     incidents = result.scalars().all()
-
-    count_result = await db.execute(select(func.count(Incident.id)))
-    total = count_result.scalar_one()
 
     recent = await _recent_incidents(db)
 
@@ -83,6 +130,14 @@ async def incident_list_page(request: Request, db: AsyncSession = Depends(get_db
             **_base_context("list", recent),
             "incidents": incidents,
             "total": total,
+            "page": page,
+            "total_pages": total_pages,
+            "page_size": PAGE_SIZE,
+            "sort": sort,
+            "order": order,
+            "filter_status": status,
+            "filter_severity": severity,
+            "filter_engine": engine,
         },
     )
 
@@ -119,6 +174,14 @@ async def incident_search_page(
             **_base_context("list", recent),
             "incidents": incidents,
             "total": len(incidents),
+            "page": 1,
+            "total_pages": 1,
+            "page_size": PAGE_SIZE,
+            "sort": "created",
+            "order": "desc",
+            "filter_status": "",
+            "filter_severity": "",
+            "filter_engine": "",
             "search_query": q,
         },
     )

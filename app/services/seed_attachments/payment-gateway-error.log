@@ -1,0 +1,30 @@
+2026-04-08 14:30:12.443 ERROR [payments-worker-3] c.s.PaymentGateway - Stripe webhook handler timeout
+  Request ID: req_abc123def456
+  Endpoint: /webhooks/stripe
+  Duration: 30002ms (timeout: 30000ms)
+  Error: java.net.SocketTimeoutException: Read timed out
+
+2026-04-08 14:30:15.112 ERROR [payments-worker-1] c.s.PaymentGateway - Payment processing failed
+  Order ID: R928374651
+  Payment Method: Spree::Gateway::Stripe
+  Amount: $234.99
+  Error: Spree::Core::GatewayError: The payment gateway is not responding
+
+2026-04-08 14:31:02.887 WARN  [payments-worker-2] c.s.ConnectionPool - Database connection pool exhaustion
+  Active connections: 50/50
+  Waiting threads: 23
+  Max wait time: 15234ms
+
+2026-04-08 14:31:45.223 ERROR [payments-worker-5] c.s.PaymentGateway - HTTP 502 returned to checkout
+  Customer session: sess_xyz789
+  Cart total: $189.50
+  Stack trace:
+    at Spree::CheckoutController#update (app/controllers/spree/checkout_controller.rb:45)
+    at Spree::Payment#process! (app/models/spree/payment.rb:112)
+    at Spree::Gateway::Stripe#purchase (lib/spree/gateway/stripe.rb:67)
+
+2026-04-08 14:32:10.556 CRITICAL [monitoring] Error rate exceeded threshold
+  Current: 45.2%
+  Threshold: 5.0%
+  Window: 5 minutes
+  Affected endpoints: /checkout/payment, /webhooks/stripe

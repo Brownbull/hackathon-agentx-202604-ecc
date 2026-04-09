@@ -74,12 +74,32 @@
   // Apply on load
   applySettings(loadSettings());
 
+  // ==================== PROVIDER SELECTOR ====================
+  window.selectProvider = function(el) {
+    if (el.classList.contains('disabled')) return;
+    document.querySelectorAll('.provider-card').forEach(function(c) { c.classList.remove('selected'); });
+    el.classList.add('selected');
+    localStorage.setItem('sre-triage-provider', el.dataset.provider);
+  };
+
+  // Restore provider selection on load (for detail page selector)
+  (function() {
+    var cards = document.querySelectorAll('.provider-card');
+    if (cards.length === 0) return;
+    var saved = localStorage.getItem('sre-triage-provider') || '';
+    var card = saved ? document.querySelector('[data-provider="' + saved + '"]:not(.disabled)') : null;
+    if (!card) card = document.querySelector('.provider-card:not(.disabled)');
+    if (card) window.selectProvider(card);
+  })();
+
   // ==================== TRIAGE ====================
   window.runTriage = function(incidentId) {
-    var btn = document.getElementById('btn-triage');
-    if (!btn) return;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="triage-spinner"></span> Triaging...';
+    // Find whichever triage button is visible (topbar or panel)
+    var btn = document.getElementById('btn-triage') || document.querySelector('[data-testid="btn-run-triage"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="triage-spinner"></span> Triaging...';
+    }
 
     var provider = localStorage.getItem('sre-triage-provider') || '';
     var url = '/api/incidents/' + incidentId + '/triage';
@@ -93,8 +113,10 @@
       .then(function() { window.location.reload(); })
       .catch(function(err) {
         alert('Triage error: ' + err.message);
-        btn.disabled = false;
-        btn.textContent = 'Run Triage';
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Run Triage';
+        }
       });
   };
 
@@ -147,7 +169,71 @@
     if (e.key === 'Escape') window.closeResolveDialog();
   });
 
-  // ==================== MOBILE SIDEBAR ====================
+  // ==================== PIPELINE TOOLTIPS ====================
+  var tooltipTimer = null;
+
+  window.showPipelineTooltip = function(dotEl) {
+    // Remove any existing tooltip
+    dismissPipelineTooltip();
+
+    var title = dotEl.getAttribute('data-tooltip-title') || '';
+    var body = dotEl.getAttribute('data-tooltip-body') || '';
+    if (!body) return;
+
+    var tooltip = document.createElement('div');
+    tooltip.className = 'pipeline-tooltip';
+    tooltip.innerHTML =
+      '<button class="pipeline-tooltip-close" onclick="dismissPipelineTooltip()">&times;</button>' +
+      '<div class="pipeline-tooltip-title">' + title + '</div>' +
+      '<div class="pipeline-tooltip-body">' + body + '</div>';
+
+    // Position relative to the dot's parent step
+    var step = dotEl.closest('.pipeline-step');
+    if (step) {
+      step.style.position = 'relative';
+      step.appendChild(tooltip);
+    }
+
+    // Auto-dismiss after 5 seconds
+    tooltipTimer = setTimeout(dismissPipelineTooltip, 5000);
+  };
+
+  window.dismissPipelineTooltip = function() {
+    if (tooltipTimer) { clearTimeout(tooltipTimer); tooltipTimer = null; }
+    var existing = document.querySelector('.pipeline-tooltip');
+    if (existing) existing.remove();
+  };
+
+  // Dismiss on click outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.pipeline-step') && !e.target.closest('.pipeline-tooltip')) {
+      dismissPipelineTooltip();
+    }
+  });
+
+  // ==================== ATTACHMENT LOG LOADER ====================
+  // Lazy-load text attachment content when its <details> opens
+  document.querySelectorAll('.attachment-item').forEach(function(detail) {
+    detail.addEventListener('toggle', function() {
+      if (!detail.open) return;
+      var logDiv = detail.querySelector('.attachment-log[data-src]');
+      if (!logDiv || logDiv.dataset.loaded) return;
+      logDiv.dataset.loaded = '1';
+      fetch(logDiv.dataset.src)
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+          logDiv.textContent = text;
+        })
+        .catch(function() {
+          logDiv.textContent = 'Failed to load attachment.';
+        });
+    });
+    // If already open (first item), trigger load immediately
+    if (detail.open) detail.dispatchEvent(new Event('toggle'));
+  });
+
+  // ==================== SIDEBAR ====================
+  // Mobile toggle
   window.toggleSidebar = function() {
     document.querySelector('.sidebar').classList.toggle('open');
     document.getElementById('sidebar-overlay').classList.toggle('open');
@@ -157,6 +243,20 @@
     document.querySelector('.sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
   };
+
+  // Desktop collapse/expand
+  window.toggleSidebarCollapse = function() {
+    var sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('collapsed');
+    localStorage.setItem('sre-sidebar-collapsed', sidebar.classList.contains('collapsed') ? '1' : '');
+  };
+
+  // Restore collapse state on load
+  (function() {
+    if (localStorage.getItem('sre-sidebar-collapsed') === '1') {
+      document.querySelector('.sidebar').classList.add('collapsed');
+    }
+  })();
 
   // ==================== EXPLANATION TABS ====================
   window.switchExplainTab = function(tab, btn) {

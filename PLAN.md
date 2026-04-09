@@ -35,8 +35,8 @@
 | **24. Enrich Detail Page** | Pipeline progress, engine badge, expandable dispatch, component | MUST | ✅ Done | `8fa7d50` | — |
 | **25. Explanation Layers** | General / Specialist / Non-technical views of diagnosis | SHOULD | ✅ Done | `8242dcf` | — |
 | **26. Responsive Layout** | Desktop portrait/landscape + mobile (<768px) | SHOULD | ✅ Done | `8242dcf` | — |
-| **27. Pipeline Tooltips** | Click pipeline dots → popup with stage details, auto-dismiss 5s | SHOULD | 🔲 Pending | — | — |
-| **28. Realistic Seed Data** | 12 incidents: mixed lifecycles, attachments, guardrail rejections | MUST | 🔲 Pending | — | — |
+| **27. Pipeline Tooltips** | Click pipeline dots → popup with stage details, auto-dismiss 5s | SHOULD | ✅ Done | — | — |
+| **28. Realistic Seed Data** | 12 incidents: mixed lifecycles, attachments, guardrail rejections + engine selector on detail page | MUST | ✅ Done | — | 80 |
 | **12. Demo Video** | 3-min YouTube walkthrough | MUST | 🔲 Pending | — | — |
 
 **Test total: 80 pytest + 16 Playwright E2E**
@@ -60,14 +60,14 @@ Auto-dispatch (ticket + email + chat) → Acknowledge → Resolve → Reporter n
 - Reporter email notification on resolution
 - Expandable dispatch cards showing ticket/email/chat content
 - Integration-ready notices (mock → Jira/SendGrid/Slack)
-- Seed data: 4 sample incidents on startup
+- Seed data: 12 sample incidents (dispatched, acknowledged, resolved, rejected, untriaged)
 - Langfuse auto-seeded with dev account + API keys
 - Guardrails: prompt injection detection, PII scan, rate limiting
 - Observability: OpenTelemetry spans + Langfuse LLM tracing
 - Full documentation: README, AGENTS_USE.md, SCALING.md, QUICKGUIDE.md, LICENSE
 
 ### What's remaining
-- **Phase 12**: Demo video recording
+- **Phase 12**: Demo video recording (last step)
 
 ---
 

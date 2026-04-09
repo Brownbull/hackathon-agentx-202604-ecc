@@ -9,6 +9,17 @@
 
 {% block settings_margin %}auto{% endblock %}
 
+{# Macro to build sort URL, toggling asc/desc if same column #}
+{% macro sort_url(col) -%}
+  ?sort={{ col }}&order={% if sort == col and order == 'asc' %}desc{% else %}asc{% endif %}&page=1{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_engine %}&engine={{ filter_engine }}{% endif %}
+{%- endmacro %}
+
+{% macro sort_icon(col) %}
+  {% if sort == col %}
+    {% if order == 'asc' %}<span class="sort-arrow">&uarr;</span>{% else %}<span class="sort-arrow">&darr;</span>{% endif %}
+  {% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="view-animate">
   <!-- Search bar -->
@@ -25,33 +36,118 @@
   </p>
   {% endif %}
 
-  <div class="panel" style="border-radius: 8px; overflow: hidden;">
-    <table class="incidents-table" data-testid="incidents-table">
-      <thead>
-        <tr><th>ID</th><th>Status</th><th>Severity</th><th>Description</th><th>Reporter</th><th>Created</th></tr>
-      </thead>
-      <tbody>
-        {% for inc in incidents %}
-        {% set short_id = inc.id|string %}
-        <tr onclick="window.location='/incidents/{{ inc.id }}'" data-testid="incident-row">
-          <td class="id-col">{{ short_id[:8] }}</td>
-          <td><span class="badge badge-{{ inc.status.value }}">{{ inc.status.value|capitalize }}</span></td>
-          <td>
-            {% if inc.severity %}
-            <span class="badge badge-{{ inc.severity.value|lower }}">{{ inc.severity.value }}</span>
-            {% else %}
-            <span class="badge" style="background:rgba(100,116,139,0.1);color:var(--text-dim)">&mdash;</span>
-            {% endif %}
-          </td>
-          <td class="desc-col">{{ inc.description[:80] }}</td>
-          <td style="color:var(--text-dim)">{{ inc.reporter_email }}</td>
-          <td class="time-col">{{ inc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-dim)">No incidents found</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- Filter row -->
+  <form class="filter-row" method="get" action="/incidents" data-testid="filter-form">
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="order" value="{{ order }}">
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All Statuses</option>
+      <option value="submitted" {% if filter_status == 'submitted' %}selected{% endif %}>Submitted</option>
+      <option value="dispatched" {% if filter_status == 'dispatched' %}selected{% endif %}>Dispatched</option>
+      <option value="resolved" {% if filter_status == 'resolved' %}selected{% endif %}>Resolved</option>
+      <option value="rejected" {% if filter_status == 'rejected' %}selected{% endif %}>Rejected</option>
+    </select>
+    <select name="severity" onchange="this.form.submit()">
+      <option value="">All Severities</option>
+      <option value="P1" {% if filter_severity == 'P1' %}selected{% endif %}>P1</option>
+      <option value="P2" {% if filter_severity == 'P2' %}selected{% endif %}>P2</option>
+      <option value="P3" {% if filter_severity == 'P3' %}selected{% endif %}>P3</option>
+      <option value="P4" {% if filter_severity == 'P4' %}selected{% endif %}>P4</option>
+    </select>
+    <select name="engine" onchange="this.form.submit()">
+      <option value="">All Engines</option>
+      <option value="basic" {% if filter_engine == 'basic' %}selected{% endif %}>Basic</option>
+      <option value="anthropic" {% if filter_engine == 'anthropic' %}selected{% endif %}>Premium</option>
+      <option value="managed" {% if filter_engine == 'managed' %}selected{% endif %}>Managed</option>
+    </select>
+    {% if filter_status or filter_severity or filter_engine %}
+    <a href="/incidents?sort={{ sort }}&order={{ order }}" class="filter-clear">Clear filters</a>
+    {% endif %}
+  </form>
+
+  <div class="table-scroll-wrapper">
+    <div class="panel" style="border-radius: 8px; overflow: hidden; min-width: 700px;">
+      <table class="incidents-table" data-testid="incidents-table">
+        <thead>
+          <tr>
+            <th><a href="{{ sort_url('id') }}" class="sort-link">ID {{ sort_icon('id') }}</a></th>
+            <th><a href="{{ sort_url('status') }}" class="sort-link">Status {{ sort_icon('status') }}</a></th>
+            <th><a href="{{ sort_url('severity') }}" class="sort-link">Severity {{ sort_icon('severity') }}</a></th>
+            <th><a href="{{ sort_url('description') }}" class="sort-link">Description {{ sort_icon('description') }}</a></th>
+            <th class="attach-col">Files</th>
+            <th><a href="{{ sort_url('engine') }}" class="sort-link">Engine {{ sort_icon('engine') }}</a></th>
+            <th><a href="{{ sort_url('reporter') }}" class="sort-link">Reporter {{ sort_icon('reporter') }}</a></th>
+            <th><a href="{{ sort_url('created') }}" class="sort-link">Created {{ sort_icon('created') }}</a></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inc in incidents %}
+          {% set short_id = inc.id|string %}
+          <tr onclick="window.location='/incidents/{{ inc.id }}'" data-testid="incident-row">
+            <td class="id-col">{{ short_id[:8] }}</td>
+            <td><span class="badge badge-{{ inc.status.value }}">{{ inc.status.value|capitalize }}</span></td>
+            <td>
+              {% if inc.severity %}
+              <span class="badge badge-{{ inc.severity.value|lower }}">{{ inc.severity.value }}</span>
+              {% else %}
+              <span class="badge" style="background:rgba(100,116,139,0.1);color:var(--text-dim)">&mdash;</span>
+              {% endif %}
+            </td>
+            <td class="desc-col">{{ inc.description[:80] }}</td>
+            <td class="attach-col">
+              {% for att in inc.attachments or [] %}
+                {% if att.mime_type.startswith('image/') %}
+                <span class="attach-icon attach-img" title="{{ att.filename }}">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="6.5" r="1.5" fill="currentColor"/><path d="M1 12l3.5-4 2.5 3 3-4L15 12" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                </span>
+                {% elif att.mime_type == 'text/plain' or att.filename.endswith('.log') %}
+                <span class="attach-icon attach-log" title="{{ att.filename }}">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="12" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5"/><line x1="5" y1="5" x2="11" y2="5" stroke="currentColor" stroke-width="1.2"/><line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.2"/><line x1="5" y1="11" x2="9" y2="11" stroke="currentColor" stroke-width="1.2"/></svg>
+                </span>
+                {% endif %}
+              {% endfor %}
+            </td>
+            <td>
+              {% if inc.triage_engine %}
+              <span class="badge badge-engine-{{ inc.triage_engine }}">{{ inc.triage_engine|capitalize }}</span>
+              {% else %}
+              <span style="color:var(--text-dim);font-size:11px">&mdash;</span>
+              {% endif %}
+            </td>
+            <td style="color:var(--text-dim)">{{ inc.reporter_email }}</td>
+            <td class="time-col">{{ inc.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim)">No incidents found</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="pagination" data-testid="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}&sort={{ sort }}&order={{ order }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_engine %}&engine={{ filter_engine }}{% endif %}" class="page-btn">&laquo; Prev</a>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+      <span class="page-btn active">{{ p }}</span>
+      {% elif p <= 3 or p > total_pages - 2 or (p >= page - 1 and p <= page + 1) %}
+      <a href="?page={{ p }}&sort={{ sort }}&order={{ order }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_engine %}&engine={{ filter_engine }}{% endif %}" class="page-btn">{{ p }}</a>
+      {% elif p == 4 or p == total_pages - 2 %}
+      <span class="page-ellipsis">&hellip;</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}&sort={{ sort }}&order={{ order }}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_severity %}&severity={{ filter_severity }}{% endif %}{% if filter_engine %}&engine={{ filter_engine }}{% endif %}" class="page-btn">Next &raquo;</a>
+    {% endif %}
+
+    <span class="page-info">{{ page }} / {{ total_pages }} ({{ total }} total)</span>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

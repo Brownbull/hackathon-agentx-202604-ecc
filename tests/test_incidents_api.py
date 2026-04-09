@@ -170,7 +170,7 @@ async def test_incident_detail_page_renders(client):
     resp = await client.get(f"/incidents/{incident_id}")
     assert resp.status_code == 200
     assert "detail page renders correctly" in resp.text  # Description shown
-    assert "not been triaged yet" in resp.text  # Not triaged yet
+    assert "Run AI Triage" in resp.text  # Triage panel with engine selector
 
 
 async def test_incident_not_found_page(client):
