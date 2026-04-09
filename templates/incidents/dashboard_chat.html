@@ -58,11 +58,50 @@
 
     {# 3. System pill: Guardrail #}
     {% if incident.injection_score is not none %}
+    {% set guardrail_passed = (incident.validation_flags or {}).get('passed', true) %}
     <div class="msg-system">
       <span class="system-pill">
+        {% if guardrail_passed %}
         <span class="system-dot system-dot-green"></span>
-        Guardrail passed &mdash; injection: {{ (incident.injection_score * 100)|int }}%, {{ 'clean' if (incident.validation_flags or {}).get('passed', true) else 'flagged' }}
+        Guardrail passed &mdash; injection: {{ (incident.injection_score * 100)|int }}%, clean
+        {% else %}
+        <span class="system-dot" style="background:var(--red)"></span>
+        Guardrail blocked &mdash; injection: {{ (incident.injection_score * 100)|int }}%
+        {% endif %}
       </span>
+    </div>
+    {% endif %}
+
+    {# Rejected: show guardrail rejection details #}
+    {% if incident.status.value == 'rejected' %}
+    <div class="msg msg-ai">
+      <div class="msg-avatar avatar-ai" style="background:rgba(239,68,68,0.15);color:var(--red)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      </div>
+      <div class="msg-body">
+        <div class="msg-meta" style="color:var(--red)">Guardrail Agent &bull; Submission Blocked</div>
+        <div class="bubble bubble-ai" style="border-left:3px solid var(--red)">
+          <strong style="color:var(--red)">This submission was blocked by the guardrail system.</strong>
+          <div class="context-card" style="margin-top:10px">
+            <h4 style="color:var(--red)">Threat Analysis</h4>
+            <div class="data-row"><span class="data-label">Injection Score</span><span class="data-value" style="color:var(--red)">{{ (incident.injection_score * 100)|int }}%</span></div>
+            <div class="data-row"><span class="data-label">Status</span><span class="data-value" style="color:var(--red)">Blocked</span></div>
+            {% if incident.validation_flags and incident.validation_flags.flags %}
+            <div style="margin-top:8px">
+              <span class="data-label">Detected Patterns</span>
+              <ul style="margin:6px 0 0 16px;font-size:12px;color:var(--text-dim);line-height:1.8">
+                {% for flag in incident.validation_flags.flags %}
+                <li>{{ flag }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-dim)">
+            The incident was not created. No triage or dispatch was performed.
+          </div>
+        </div>
+      </div>
     </div>
     {% endif %}
 
