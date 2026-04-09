@@ -600,7 +600,379 @@ SEED_INCIDENTS = [
         },
     },
     # -----------------------------------------------------------------------
-    # 12. Fresh untriaged incident (for demo triage flow)
+    # 13. CDN cache invalidation (anthropic + image)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "cpu-spike-dashboard.png", "mime_type": "image/png"},
+        ],
+        "reporter_name": "Rachel Nguyen",
+        "reporter_email": "rachel.nguyen@example.com",
+        "description": (
+            "CDN cache invalidation is failing silently after product updates. "
+            "Customers see stale product prices and descriptions for 2-4 hours "
+            "after admin updates. CloudFront invalidation API returns 200 but "
+            "cache-control headers show max-age=14400. The invalidation queue in "
+            "Spree::Preferences shows 340 pending invalidations. Attached Grafana "
+            "dashboard shows cache hit ratio dropped from 94% to 12% during the "
+            "affected window."
+        ),
+        "severity": Severity.P2,
+        "category": "infrastructure",
+        "affected_component": "CDN Cache Invalidation & Spree::Preferences invalidation queue",
+        "technical_summary": (
+            "CDN cache invalidation is failing silently despite the CloudFront "
+            "invalidation API returning HTTP 200. The root issue is a disconnect "
+            "between the application-level cache invalidation logic and the CDN "
+            "configuration. The cache-control headers are set to max-age=14400 "
+            "(4 hours), which means even if invalidation requests are sent, the "
+            "CDN edge nodes retain cached content until the max-age expires. "
+            "The Spree::Preferences invalidation queue showing 340 pending "
+            "invalidations suggests the invalidation processing pipeline is "
+            "backed up or failing to process entries."
+        ),
+        "root_cause_hypothesis": (
+            "The CloudFront invalidation API returns 200 (accepted) but the "
+            "actual invalidation is not propagating to edge nodes, likely due "
+            "to: (1) cache-control max-age=14400 overriding invalidation, "
+            "(2) invalidation queue processing failure in Spree::Preferences, "
+            "or (3) CloudFront invalidation path pattern mismatch."
+        ),
+        "suggested_assignee": "infrastructure-team",
+        "confidence": 0.75,
+        "recommended_actions": [
+            "Review CloudFront invalidation API responses for actual invalidation status",
+            "Check cache-control headers being set on product pages — max-age=14400 is too aggressive",
+            "Investigate why Spree::Preferences invalidation queue has 340 pending entries",
+            "Verify CloudFront invalidation path patterns match actual product URLs",
+            "Consider switching to cache-control: no-cache with ETag validation for product pages",
+            "Implement cache invalidation monitoring with alerting on stale content detection",
+            "Review CDN configuration for any caching layers between origin and edge",
+            "Add product update webhook that triggers immediate CDN purge",
+        ],
+        "related_files": [
+            {"path": "core/app/models/spree/preferences/configuration.rb", "relevance": "Spree preference configuration including cache invalidation settings"},
+            {"path": "core/app/models/spree/product.rb", "relevance": "Product model — after_save callbacks may trigger cache invalidation"},
+            {"path": "core/lib/spree/core/product_duplicator.rb", "relevance": "Product duplication logic that may bypass cache invalidation hooks"},
+            {"path": "api/app/controllers/spree/api/products_controller.rb", "relevance": "Product API controller — check cache-control header settings"},
+        ],
+        "triage_duration_ms": 12674,
+        "triage_tokens_in": 3939,
+        "triage_tokens_out": 1031,
+        "triage_engine": "anthropic",
+    },
+    # -----------------------------------------------------------------------
+    # 14. Background job deadlock (anthropic + log)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "oom-killer-syslog.log", "mime_type": "text/plain"},
+        ],
+        "reporter_name": "Kevin Zhao",
+        "reporter_email": "kevin.zhao@example.com",
+        "description": (
+            "Sidekiq workers are deadlocked processing order fulfillment jobs. "
+            "The fulfillment_queue has 1,847 jobs stuck in 'busy' state with no "
+            "progress for 45 minutes. All 25 Sidekiq threads are blocked waiting "
+            "on the same database advisory lock. The lock was acquired by a "
+            "long-running inventory sync job that started at 15:30 UTC. No new "
+            "orders are being fulfilled. Attached production log shows the lock "
+            "contention pattern."
+        ),
+        "severity": Severity.P1,
+        "category": "fulfillment",
+        "affected_component": "Sidekiq job queue, database advisory locks, order fulfillment pipeline",
+        "technical_summary": (
+            "The order fulfillment pipeline is completely blocked due to a "
+            "database advisory lock deadlock. All 25 Sidekiq threads are waiting "
+            "on the same lock held by a long-running inventory sync job. This is "
+            "a classic priority inversion problem where a low-priority background "
+            "job (inventory sync) holds a shared resource needed by high-priority "
+            "jobs (order fulfillment). The advisory lock mechanism doesn't have "
+            "a timeout, so threads will wait indefinitely."
+        ),
+        "root_cause_hypothesis": (
+            "A long-running inventory sync job acquired a database advisory lock "
+            "at 15:30 UTC and has not released it. All 25 Sidekiq fulfillment "
+            "workers are blocked waiting on this same lock. The advisory lock "
+            "has no timeout configured, causing indefinite blocking."
+        ),
+        "suggested_assignee": "platform-team",
+        "confidence": 0.92,
+        "recommended_actions": [
+            "Immediately kill the stuck inventory sync job holding the advisory lock",
+            "Add timeout to database advisory lock acquisition in fulfillment jobs",
+            "Separate inventory sync and fulfillment jobs into different lock namespaces",
+            "Implement circuit breaker for advisory lock acquisition with configurable timeout",
+            "Add Sidekiq job monitoring for stuck/long-running jobs with auto-kill after threshold",
+            "Review inventory sync job to understand why it runs so long",
+            "Add dead letter queue for jobs that fail to acquire locks after timeout",
+        ],
+        "related_files": [
+            {"path": "core/app/models/spree/stock_item.rb", "relevance": "Stock item model — likely where advisory locks are acquired for inventory operations"},
+            {"path": "core/app/models/spree/order_inventory.rb", "relevance": "Order inventory allocation — fulfillment jobs that need the advisory lock"},
+            {"path": "core/app/models/spree/stock_movement.rb", "relevance": "Stock movement tracking — may be involved in the inventory sync job"},
+            {"path": "core/app/models/spree/shipment.rb", "relevance": "Shipment model — downstream of fulfillment pipeline, affected by the deadlock"},
+            {"path": "core/app/models/spree/order.rb", "relevance": "Order model — order state machine may be stuck in processing state"},
+            {"path": "core/lib/spree/order_updater.rb", "relevance": "Order updater — may hold or wait on advisory locks during order processing"},
+        ],
+        "triage_duration_ms": 15300,
+        "triage_tokens_in": 4742,
+        "triage_tokens_out": 1338,
+        "triage_engine": "anthropic",
+    },
+    # -----------------------------------------------------------------------
+    # 15. API rate limiter misconfig (anthropic + image + log)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "latency-spike-grafana.png", "mime_type": "image/png"},
+            {"filename": "nginx-502-errors.log", "mime_type": "text/plain"},
+        ],
+        "reporter_name": "Anna Kowalski",
+        "reporter_email": "anna.kowalski@example.com",
+        "description": (
+            "API rate limiter is blocking legitimate traffic from our mobile app. "
+            "Rate limit of 100 req/min per IP is being applied to our CDN edge "
+            "IPs instead of individual client IPs. All mobile users behind the "
+            "same CDN edge are sharing one rate limit bucket. Error rate for "
+            "mobile API calls jumped to 34% since the rate limiter config change "
+            "at 11:00 UTC. Attached dashboard screenshot and nginx error log "
+            "show the pattern."
+        ),
+        "severity": Severity.P1,
+        "category": "infrastructure",
+        "affected_component": "API rate limiter, CDN edge IP routing, mobile API gateway",
+        "technical_summary": (
+            "The API rate limiter is incorrectly identifying the client by CDN "
+            "edge IP instead of the actual client IP. This causes all mobile "
+            "users routed through the same CDN edge to share a single rate limit "
+            "bucket of 100 req/min. With typical CDN edge serving 500-2000 "
+            "concurrent users, the shared bucket is exhausted almost immediately. "
+            "The rate limiter should be using the X-Forwarded-For header to "
+            "identify individual clients behind the CDN."
+        ),
+        "root_cause_hypothesis": (
+            "The rate limiter config change at 11:00 UTC switched the client "
+            "identification from X-Forwarded-For header to the direct connection "
+            "IP, which for CDN-proxied requests is the CDN edge IP. This causes "
+            "all clients behind the same edge to share one rate limit bucket."
+        ),
+        "suggested_assignee": "infrastructure-team",
+        "confidence": 0.92,
+        "recommended_actions": [
+            "Immediately revert the rate limiter config change from 11:00 UTC",
+            "Configure rate limiter to use X-Forwarded-For for client identification",
+            "Add CDN edge IPs to rate limiter allowlist to prevent false blocking",
+            "Implement per-user rate limiting using API key or JWT token instead of IP",
+            "Add monitoring for rate limit hit rates by IP to detect CDN edge saturation",
+            "Test rate limiter config changes in staging before production deployment",
+            "Add circuit breaker to rate limiter that disables blocking if error rate exceeds threshold",
+            "Review nginx real_ip_header configuration to ensure correct client IP extraction",
+            "Implement graduated rate limiting: warn at 80%, soft-block at 100%, hard-block at 150%",
+        ],
+        "related_files": [
+            {"path": "core/app/controllers/spree/api/base_controller.rb", "relevance": "Base API controller — rate limiting middleware likely applied here"},
+            {"path": "api/app/controllers/spree/api/products_controller.rb", "relevance": "Product API — high-traffic endpoint most affected by rate limiting"},
+            {"path": "api/app/controllers/spree/api/orders_controller.rb", "relevance": "Order API — critical endpoint affected by rate limiting"},
+            {"path": "core/lib/spree/api/config.rb", "relevance": "API configuration — rate limit settings and client identification config"},
+            {"path": "core/config/initializers/rack_attack.rb", "relevance": "Rack::Attack configuration — rate limiting rules and IP identification"},
+            {"path": ".github/workflows", "relevance": "Deployment workflow — check what config change was deployed at 11:00 UTC"},
+        ],
+        "triage_duration_ms": 12025,
+        "triage_tokens_in": 3957,
+        "triage_tokens_out": 1091,
+        "triage_engine": "anthropic",
+    },
+    # -----------------------------------------------------------------------
+    # 16. SSL cert expiry (managed + image)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "cpu-spike-dashboard.png", "mime_type": "image/png"},
+        ],
+        "reporter_name": "Marcus Chen",
+        "reporter_email": "marcus.chen@example.com",
+        "description": (
+            "Internal microservice SSL certificates expired at midnight causing "
+            "cascading 503 errors across the payment and inventory services. The "
+            "cert-manager automatic renewal failed because the ACME DNS challenge "
+            "provider credentials were rotated last week without updating the "
+            "cert-manager secret. 3 internal services are affected: "
+            "payment-gateway, inventory-sync, and order-processor. All "
+            "inter-service gRPC calls are failing TLS handshake. Attached "
+            "Grafana dashboard shows the error spike."
+        ),
+        "severity": Severity.P1,
+        "category": "infrastructure",
+        "affected_component": "Internal SSL/TLS certificates, cert-manager, gRPC inter-service communication",
+        "technical_summary": (
+            "Internal microservice SSL certificates expired at midnight, causing "
+            "cascading 503 errors across payment-gateway, inventory-sync, and "
+            "order-processor services. The cert-manager automatic renewal failed "
+            "because ACME DNS challenge credentials were rotated without updating "
+            "the cert-manager Kubernetes secret. All inter-service gRPC calls are "
+            "failing TLS handshake validation, creating a complete service mesh "
+            "communication failure for the affected services."
+        ),
+        "root_cause_hypothesis": (
+            "ACME DNS challenge provider credentials were rotated last week but "
+            "the cert-manager Kubernetes secret was not updated, causing "
+            "certificate renewal to fail silently. When the existing certificates "
+            "expired at midnight, all gRPC inter-service calls started failing "
+            "TLS handshake."
+        ),
+        "suggested_assignee": "infrastructure-team",
+        "confidence": 0.85,
+        "recommended_actions": [
+            "Update cert-manager secret with the new ACME DNS challenge credentials",
+            "Force certificate renewal for all affected services",
+            "Restart affected services after certificate renewal",
+            "Add certificate expiry monitoring with alerting at 14/7/3/1 day thresholds",
+            "Implement credential rotation runbook that includes cert-manager secret update",
+            "Add health check for certificate validity in service readiness probes",
+            "Consider using Vault or similar for centralized certificate management",
+        ],
+        "related_files": [
+            {"path": "core/config/initializers/ssl.rb", "relevance": "SSL configuration — certificate paths and TLS settings"},
+            {"path": "core/app/models/spree/gateway.rb", "relevance": "Payment gateway — affected by TLS handshake failures"},
+            {"path": "core/app/models/spree/payment_method.rb", "relevance": "Payment method — gateway communication relies on TLS"},
+            {"path": "core/app/models/spree/stock_item.rb", "relevance": "Stock item — inventory-sync service communication affected"},
+            {"path": "core/app/models/spree/order.rb", "relevance": "Order model — order-processor service communication affected"},
+        ],
+        "triage_duration_ms": 95000,
+        "triage_tokens_in": 4200,
+        "triage_tokens_out": 1100,
+        "triage_engine": "managed",
+    },
+    # -----------------------------------------------------------------------
+    # 17. Database replication lag (managed + log)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "oom-killer-syslog.log", "mime_type": "text/plain"},
+        ],
+        "reporter_name": "Sofia Petrov",
+        "reporter_email": "sofia.petrov@example.com",
+        "description": (
+            "PostgreSQL read replica lag increased from 50ms to 12 seconds after "
+            "a bulk product import job ran at 14:00 UTC. Read-heavy queries "
+            "(product catalog, order history, customer search) are returning "
+            "stale data. The replica is processing WAL segments 240 behind "
+            "primary. The bulk import generated 450MB of WAL in 10 minutes, "
+            "overwhelming the replica apply rate. Customer support is getting "
+            "complaints about missing orders in the order history page. Attached "
+            "replication lag log from pg_stat_replication."
+        ),
+        "severity": Severity.P2,
+        "category": "infrastructure",
+        "affected_component": "PostgreSQL replication, read replica, WAL processing pipeline",
+        "technical_summary": (
+            "A bulk product import generated 450MB of WAL in 10 minutes, "
+            "overwhelming the read replica's ability to apply WAL segments. The "
+            "replica fell 240 segments behind, causing 12-second replication lag. "
+            "Read-heavy queries routed to the replica are returning stale data, "
+            "affecting product catalog, order history, and customer search "
+            "functionality. This is a capacity issue where the bulk write "
+            "workload exceeds the replica's apply throughput."
+        ),
+        "root_cause_hypothesis": (
+            "The bulk product import at 14:00 UTC generated 450MB of WAL data "
+            "in a short window, exceeding the replica's WAL apply rate. The "
+            "replica fell behind and is unable to catch up during normal "
+            "operation, causing persistent replication lag."
+        ),
+        "suggested_assignee": "infrastructure-team",
+        "confidence": 0.65,
+        "recommended_actions": [
+            "Increase replica WAL apply worker count (max_parallel_apply_workers_per_subscription)",
+            "Throttle the bulk import job to generate WAL at a sustainable rate",
+            "Add replication lag monitoring with automatic read traffic failover to primary",
+            "Schedule bulk imports during low-traffic windows",
+            "Consider using logical replication for selective table replication",
+            "Implement read-after-write consistency for critical queries (route to primary)",
+        ],
+        "related_files": [
+            {"path": "core/app/models/spree/product.rb", "relevance": "Product model — bulk import operations generate heavy WAL"},
+            {"path": "core/app/models/spree/variant.rb", "relevance": "Variant model — product import creates variants generating additional WAL"},
+            {"path": "core/app/models/spree/order.rb", "relevance": "Order model — order history queries routed to stale replica"},
+            {"path": "core/lib/spree/core/importer.rb", "relevance": "Product importer — bulk import logic that generates heavy writes"},
+            {"path": "core/config/database.yml", "relevance": "Database configuration — replica routing and connection settings"},
+        ],
+        "triage_duration_ms": 92000,
+        "triage_tokens_in": 4200,
+        "triage_tokens_out": 1100,
+        "triage_engine": "managed",
+    },
+    # -----------------------------------------------------------------------
+    # 18. K8s pod eviction storm (managed + image + log)
+    # -----------------------------------------------------------------------
+    {
+        "_seed_lifecycle": "dispatched+attachments",
+        "_attachments": [
+            {"filename": "latency-spike-grafana.png", "mime_type": "image/png"},
+            {"filename": "nginx-502-errors.log", "mime_type": "text/plain"},
+        ],
+        "reporter_name": "Omar Hassan",
+        "reporter_email": "omar.hassan@example.com",
+        "description": (
+            "Kubernetes cluster experiencing pod eviction storm on nodes in the "
+            "catalog-pool. Node memory pressure triggered evictions of 47 pods "
+            "in 5 minutes. The evicted pods include critical services: "
+            "product-api (8 replicas down to 2), search-indexer (all 3 replicas "
+            "evicted), and image-resizer (5 of 6 evicted). Root cause appears "
+            "to be the image-resizer service consuming 3x expected memory after "
+            "the latest deploy added WebP conversion. Attached dashboard and "
+            "kubectl events log."
+        ),
+        "severity": Severity.P2,
+        "category": "infrastructure",
+        "affected_component": "Kubernetes cluster, catalog-pool nodes, pod resource limits",
+        "technical_summary": (
+            "The image-resizer service's latest deploy added WebP conversion "
+            "which tripled its memory consumption, triggering node-level memory "
+            "pressure on catalog-pool nodes. Kubernetes responded with pod "
+            "evictions, removing 47 pods across multiple services. The eviction "
+            "priority order was based on pod QoS class and resource usage, but "
+            "the blast radius was large because multiple services share the same "
+            "node pool. Critical services like product-api and search-indexer "
+            "lost most of their replicas."
+        ),
+        "root_cause_hypothesis": (
+            "The image-resizer service's WebP conversion feature increased "
+            "memory usage 3x beyond its resource limits. Since resource limits "
+            "were not updated in the deployment, the containers consumed node "
+            "memory beyond their limits, triggering node-level memory pressure "
+            "and cascading pod evictions across all services on the affected nodes."
+        ),
+        "suggested_assignee": "infrastructure-team",
+        "confidence": 0.75,
+        "recommended_actions": [
+            "Update image-resizer resource limits to account for WebP conversion memory usage",
+            "Implement pod disruption budgets for critical services to prevent mass evictions",
+            "Separate image-resizer into its own node pool with appropriate resource allocations",
+            "Add memory usage monitoring per pod with alerting before node pressure triggers",
+            "Review and set appropriate QoS classes for critical services (Guaranteed vs Burstable)",
+            "Implement horizontal pod autoscaler for image-resizer based on memory usage",
+            "Add resource quota limits per namespace to prevent single service from starving others",
+        ],
+        "related_files": [
+            {"path": "core/app/models/spree/image.rb", "relevance": "Image model — image-resizer service processes these records"},
+            {"path": "core/app/models/spree/product.rb", "relevance": "Product model — product-api service serves product data"},
+            {"path": "core/lib/spree/core/search.rb", "relevance": "Search module — search-indexer service depends on this"},
+        ],
+        "triage_duration_ms": 96769,
+        "triage_tokens_in": 4200,
+        "triage_tokens_out": 1100,
+        "triage_engine": "managed",
+    },
+    # -----------------------------------------------------------------------
+    # 19. Fresh untriaged incident (for demo triage flow)
     # -----------------------------------------------------------------------
     {
         "_seed_lifecycle": "untriaged",
@@ -707,7 +1079,7 @@ async def seed_database(db: AsyncSession) -> list[Incident]:
             related_files=data["related_files"],
             validation_flags={"flags": [], "passed": True},
             injection_score=0.0,
-            triage_engine="basic",
+            triage_engine=data.get("triage_engine", "basic"),
             triage_tokens_in=data.get("triage_tokens_in"),
             triage_tokens_out=data.get("triage_tokens_out"),
         )

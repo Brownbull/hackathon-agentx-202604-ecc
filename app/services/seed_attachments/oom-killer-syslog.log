@@ -1,0 +1,17 @@
+Apr  8 13:27:45 prod-catalog-03 kernel: [298541.234] Out of memory: Killed process 2847 (ruby) total-vm:5242880kB, anon-rss:4812340kB, file-rss:0kB
+Apr  8 13:27:45 prod-catalog-03 kernel: [298541.235] Memory cgroup out of memory: Killed process 2847 (ruby)
+Apr  8 13:27:45 prod-catalog-03 kernel: [298541.235]  Task in /docker/a3f8b2c1d4e5 killed as a result of limit of /docker/a3f8b2c1d4e5
+Apr  8 13:27:45 prod-catalog-03 kernel: [298541.236] memory: usage 4718592kB, limit 4718592kB, failcnt 847293
+Apr  8 13:27:45 prod-catalog-03 kernel: [298541.236] memory+swap: usage 4718592kB, limit 9437184kB, failcnt 0
+Apr  8 13:27:46 prod-catalog-03 systemd[1]: docker-a3f8b2c1d4e5.scope: A]process was killed by the OOM killer.
+Apr  8 13:27:46 prod-catalog-03 dockerd[1204]: time="2026-04-08T13:27:46.012Z" level=warning msg="Container a3f8b2c1d4e5 OOM killed"
+Apr  8 13:27:47 prod-catalog-03 dockerd[1204]: time="2026-04-08T13:27:47.115Z" level=info msg="Container a3f8b2c1d4e5 restarting (restart policy: always)"
+Apr  8 13:28:02 prod-catalog-03 ruby[3201]: => Booting Puma
+Apr  8 13:28:02 prod-catalog-03 ruby[3201]: => Rails 7.1.3 application starting in production
+Apr  8 13:28:15 prod-catalog-03 ruby[3201]: Puma starting in cluster mode...
+Apr  8 13:28:15 prod-catalog-03 ruby[3201]: * Workers: 4
+Apr  8 13:28:15 prod-catalog-03 ruby[3201]: * Min threads: 5
+Apr  8 13:28:15 prod-catalog-03 ruby[3201]: * Max threads: 5
+Apr  8 13:28:20 prod-catalog-03 ruby[3201]: Use Ctrl-C to stop
+Apr  8 14:01:33 prod-catalog-03 kernel: [300634.891] Out of memory: Killed process 3201 (ruby) total-vm:5345280kB, anon-rss:4801024kB
+Apr  8 14:01:33 prod-catalog-03 kernel: [300634.892] Container a3f8b2c1d4e5 OOM killed again (2nd time in 34 minutes)

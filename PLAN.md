@@ -38,6 +38,14 @@
 | **27. Pipeline Tooltips** | Click pipeline dots → popup with stage details, auto-dismiss 5s | SHOULD | ✅ Done | — | — |
 | **28. Realistic Seed Data** | 12 incidents: mixed lifecycles, attachments, guardrail rejections + engine selector on detail page | MUST | ✅ Done | — | 80 |
 | **29. Langfuse Observability** | Trace failures + rejections, session_id/user_id, populate Sessions/Users tabs | SHOULD | ✅ Done | — | 82 |
+| **30. Multi-Engine Seed** | Live triage with Premium + Experimental engines → capture → 6 new seed incidents with attachments + Langfuse traces | MUST | ✅ Done | — | 82 |
+| **31. Guardrail Hardening** | SQL/XSS web attack patterns (4 patterns + 5 tests) | SHOULD | 🔲 Pending | — | — |
+| **32. Provider Fallback** | Auto-retry next provider on triage error, ordered fallback chain | SHOULD | 🔲 Pending | — | — |
+| **33. REQUIREMENTS.md** | Enumerated requirements with IDs, phase mapping, status checkboxes | MUST | 🔲 Pending | — | — |
+| **34. VIDEO-SCRIPT-BRIEF.md** | Demo video script with timed segments, ECC differentiators, eval dimensions | MUST | 🔲 Pending | — | — |
+| **35. Onboarding Tooltips** | Step-by-step hints on first visit guiding judges through the demo path | SHOULD | 🔲 Pending | — | — |
+| **36. Doc Refresh** | Update AGENTS_USE.md, QUICKGUIDE.md, README.md for Phases 14-29 (LLM-judge critical) | MUST | 🔲 Pending | — | — |
+| **37. Langfuse E2E** | Playwright tests: login to Langfuse, screenshot traces before/after triage | SHOULD | 🔲 Pending | — | — |
 | **12. Demo Video** | 3-min YouTube walkthrough | MUST | 🔲 Pending | — | — |
 
 **Test total: 80 pytest + 16 Playwright E2E**
@@ -472,6 +480,311 @@ Phase 26 (Responsive) — independent, can run anytime
 Phase 27 (Tooltips) — independent
 Phase 28 (Seed Data) — independent
 Both can run in parallel. Phase 12 (Demo) runs last.
+```
+
+---
+
+## Phase 30: Guardrail Hardening — SQL/XSS Patterns (Pending)
+
+**Goal**: Add unambiguous web attack patterns as a separate detection category that won't false-positive on legitimate SRE incident reports.
+
+### New patterns
+
+| Pattern | Regex | Weight | Rationale |
+|---------|-------|--------|-----------|
+| XSS script tag | `<script\b[^>]*>` | 0.95 | Never legitimate in incident text |
+| SQL UNION injection | `\bUNION\s+(ALL\s+)?SELECT\b` | 0.95 | Attack signature, not diagnostic text |
+| SQL DROP TABLE | `\bDROP\s+TABLE\b` | 0.95 | Destructive DDL, never in reports |
+| JavaScript URI | `javascript\s*:` | 0.90 | XSS vector via URI scheme |
+
+### Files to modify
+- [ ] `app/pipeline/guardrail/checks.py` — add `WEB_ATTACK_PATTERNS` list after `INJECTION_PATTERNS`
+- [ ] `app/pipeline/guardrail/checks.py` — add `check_web_attacks()` function (parallel to `check_injection()`)
+- [ ] `app/pipeline/guardrail/checks.py` — update `validate_input()` to combine: `max(injection_score, web_attack_score)`
+- [ ] `app/pipeline/guardrail/checks.py` — add `"web_attack_patterns_detected"` flag
+- [ ] `tests/test_guardrails.py` — 4 positive tests (one per pattern) + 1 false-positive guard
+
+### False-positive guard test
+Input: `"SQL query SELECT * FROM orders is timing out; table scans detected in production"` → must PASS (not rejected). SRE reports naturally mention SQL.
+
+---
+
+## Phase 31: Provider Fallback on Triage Error (Pending)
+
+**Goal**: When the configured triage provider fails, automatically try the next available provider before returning an error.
+
+### Architecture
+Fallback logic lives in `run_triage()` in `agent.py` (not the route handler). The route stays clean; providers remain unaware of each other.
+
+### Fallback chain
+```
+configured provider fails → next available → next → raise original exception
+```
+
+Provider availability check:
+- `anthropic`: `settings.anthropic_api_key` is non-empty
+- `langchain`: `settings.google_api_key` or `settings.groq_api_key` is non-empty
+- `managed`: always available (has keyword stub fallback)
+
+### Files to modify
+- [ ] `app/pipeline/triage/agent.py` — add `_provider_available(name: str) -> bool` helper
+- [ ] `app/pipeline/triage/agent.py` — add `FALLBACK_ORDER` mapping each provider to its fallback sequence
+- [ ] `app/pipeline/triage/agent.py` — wrap `provider.triage()` in try/except with fallback loop
+- [ ] `app/pipeline/triage/agent.py` — tag `result.engine` with fallback provenance: `"langchain (fallback from anthropic)"`
+- [ ] `tests/test_provider_fallback.py` — 4 tests: successful fallback, all-fail, skip unavailable, no-fallback-on-success
+
+### Route handler
+No changes. Existing error handler (lines 289-309 in `incidents.py`) remains as last resort if ALL providers fail.
+
+---
+
+## Phase 32: REQUIREMENTS.md (Pending)
+
+**Goal**: Create a requirements document with enumerated IDs, phase traceability, and status checkboxes for hackathon judges.
+
+### File to create
+- [ ] `REQUIREMENTS.md` at project root
+
+### Categories and IDs
+
+| Category | ID Prefix | Count | Source phases |
+|----------|-----------|-------|---------------|
+| Incident Submission | SUB | 5 | Phase 2 |
+| Guardrails | GRD | 4 | Phase 7, 30 |
+| Triage Agent | TRI | 5 | Phase 3, 15, 17-21 |
+| Dispatch | DSP | 3 | Phase 5-6 |
+| Resolution | RES | 2 | Phase 9 |
+| Observability | OBS | 3 | Phase 8, 29 |
+| Documentation | DOC | 6 | Phase 11 |
+| Infrastructure | INF | 3 | Phase 1 |
+| Demo | DEM | 1 | Phase 12 |
+
+### Sections
+- [ ] v1 Requirements — all enumerated with `[x]` / `[ ]` status
+- [ ] v2 ECC Differentiators — 3 engines, chat view, explanation layers, provider fallback, etc.
+- [ ] Out of Scope — deferred items
+- [ ] Traceability table — requirement ID → phase → status
+
+### Reference
+GSD format: `/home/khujta/projects/hackathon/202604-agentx/.planning/REQUIREMENTS.md`
+
+---
+
+## Phase 33: VIDEO-SCRIPT-BRIEF.md (Pending)
+
+**Goal**: Create a production brief for the 3-minute demo video highlighting ECC-specific differentiators and all 6 evaluation dimensions.
+
+### File to create
+- [ ] `docs/VIDEO-SCRIPT-BRIEF.md`
+
+### ECC differentiators to highlight
+- 3 triage engines with live switching on detail page
+- Self-hosted Langfuse (judges explore without cloud signup)
+- Chat conversation view (timeline reconstruction)
+- Explanation layers (General / Specialist / Non-technical)
+- 12 seed incidents showing all lifecycle states
+- Pipeline tooltips with stage details
+- Provider fallback on triage error (Phase 31)
+- Web attack guardrail patterns (Phase 30)
+
+### Timed segment structure
+
+| Time | Section | Content |
+|------|---------|---------|
+| 0:00-0:15 | Hook + Intro | Problem: SRE teams drowning. Solution: AI triage agent |
+| 0:15-0:30 | Architecture | Pipeline diagram: submit → guardrail → triage → dispatch → resolve |
+| 0:30-1:15 | Submit + Triage | Dashboard → form → engine select → progress overlay → results |
+| 1:15-1:40 | Dispatch + Lifecycle | Expandable ticket/email/chat cards, acknowledge |
+| 1:40-2:00 | Resolve + Notify | Resolve dialog → reporter notified → status updated |
+| 2:00-2:15 | Engine Switching | Switch Premium/Basic/Experimental on same incident |
+| 2:15-2:30 | Observability | Langfuse: traces, sessions, token usage |
+| 2:30-2:45 | Security | Injection attempt → blocked + guardrail badge |
+| 2:45-2:55 | Chat + Layers | Chat timeline view, explanation layer toggle |
+| 2:55-3:00 | Close | Stack, repo, docs |
+
+### Sections to include
+- [ ] Hard requirements (English, 3min, YouTube, #AgentXHackathon)
+- [ ] 5 mandatory E2E steps (submit → triage → ticket → notify → resolve)
+- [ ] 6 evaluation dimensions mapped to what to show
+- [ ] Timed segment structure
+- [ ] Production notes (seed incident 12 reserved for live triage demo)
+
+### Reference
+GSD format: `/home/khujta/projects/hackathon/202604-agentx/docs/VIDEO-SCRIPT-BRIEF.md`
+
+---
+
+## Phase 34: Onboarding Tooltips (Pending)
+
+**Goal**: Show step-by-step hint tooltips on first visit to guide judges through the app's demo path.
+
+### Behavior
+- **Trigger**: First visit after container rebuild. Uses `localStorage.getItem("onboarding_seen")` — absent = show hints.
+- **Format**: Floating tooltip (1 of N) anchored to a UI element, with **Next** / **Skip** buttons.
+- **Dismiss**: Clicking Skip or finishing the sequence sets `localStorage.onboarding_seen = "true"`.
+- **Reset**: Clearing localStorage (or fresh browser/incognito) restarts the tour.
+
+### Tooltip sequence (~5 steps)
+
+| Step | Anchor element | Hint text |
+|------|---------------|-----------|
+| 1 | Sidebar nav | "Welcome! This sidebar lets you navigate between incidents and submit new ones." |
+| 2 | Incident list table | "Here are all tracked incidents. Click any row to see triage details." |
+| 3 | Submit button (sidebar or topbar) | "Start here — submit an incident to see the AI triage in action." |
+| 4 | Engine selector (detail page) | "Switch between Premium, Basic, and Experimental triage engines." |
+| 5 | Pipeline dots (detail page) | "Click any pipeline stage to see what happened at each step." |
+
+Steps 1-3 show on the list page. Steps 4-5 show on the detail page (deferred until user navigates there, or shown in a second tour).
+
+### Implementation
+- [ ] `static/onboarding.js` — tooltip engine: position calculation, step state, localStorage check, Next/Skip handlers
+- [ ] `static/dashboard.css` — tooltip styles: overlay highlight, arrow, step counter badge, fade animation
+- [ ] `templates/base_dashboard.html` — include `onboarding.js` script tag + tooltip container div
+- [ ] Add `data-onboard="step-N"` attributes to anchor elements in list and detail templates
+
+### Design
+- Tooltip: dark card with white text, subtle arrow pointing at anchor element
+- Highlight: dim overlay with cutout around the anchored element (spotlight effect)
+- Step counter: "1 of 5" badge in tooltip header
+- Transitions: fade in/out on step change
+
+### Files to modify
+- [ ] `static/onboarding.js` — new file (~80 lines)
+- [ ] `static/dashboard.css` — add ~30 lines for tooltip + overlay styles
+- [ ] `templates/base_dashboard.html` — add script tag + tooltip container
+- [ ] `templates/incidents/dashboard_list.html` — add `data-onboard` attributes to sidebar, table, submit button
+- [ ] `templates/incidents/dashboard_detail.html` — add `data-onboard` attributes to engine selector, pipeline dots
+
+### No backend changes. No new dependencies. Pure JS + CSS.
+
+---
+
+## Phase 35: Documentation Refresh (Pending)
+
+**Goal**: Update AGENTS_USE.md, QUICKGUIDE.md, and README.md to reflect Phases 14-29 work. CRITICAL because the first screening pass is LLM-as-judge reading the repo.
+
+### Why this matters
+From mentor sessions: "The AI will score a first filter of candidates" by reading the repo. Stale docs describing a Phase 11 app when the repo contains Phase 29 features will confuse the judge and cost us points.
+
+### AGENTS_USE.md — section-by-section updates
+
+**§1 Agent Overview:**
+- [ ] Update tech stack to include 3 engines (Claude Haiku, Gemini Flash, Claude Agent SDK)
+
+**§2 Agents & Capabilities:**
+- [ ] Triage Agent: replace single "Claude Haiku 4.5" with 3-engine table (Premium/Basic/Experimental)
+- [ ] Add tools: KnowledgeLoader (L0-L3), file verification
+- [ ] Add outputs: 3 explanation layers (General/Specialist/Non-technical)
+- [ ] Guardrail Agent: update pattern count after Phase 30, add PII sanitization (Phase 22)
+
+**§3 Architecture & Orchestration:**
+- [ ] Update ASCII diagram: add Engine Router branching to 3 providers
+- [ ] Add Knowledge Base layer (L0-L3) in triage stage
+- [ ] Add VERIFY step (file existence check) and PII Sanitization step
+- [ ] Update orchestration text for strategy pattern + provider fallback
+
+**§4 Context Engineering (BIGGEST gap):**
+- [ ] Complete rewrite: replace "keyword extraction, top 5 files × 80 lines" with progressive disclosure L0-L3
+- [ ] Describe: L0 architecture (~500 tokens, always), L1 component index (~1500, always), L2 domain (~900, keyword-matched), L3 source code fallback
+- [ ] Update token budget for knowledge loader context sizes
+- [ ] Add file verification step (Phase 18)
+- [ ] Add WHY rationale: "Progressive disclosure reduces tokens ~60% vs raw dump while improving quality"
+
+**§6 Observability:**
+- [ ] Add Langfuse Sessions/Users tabs (Phase 29)
+- [ ] Add session_id (incident UUID) and user_id (reporter_email) correlation
+- [ ] Add trace-on-failure and trace-on-rejection
+- [ ] Mention 12 seed incidents generate Langfuse traces at startup
+
+**§7 Security & Guardrails:**
+- [ ] Update pattern count after Phase 30 (add SQL/XSS mention)
+- [ ] Add PII sanitization on triage outputs (Phase 22)
+
+**§9 Scope Decisions:**
+- [ ] "What we cover": add 3 engines, chat view, explanation layers, dashboard, 12 seed incidents
+- [ ] "What we don't cover": prune items now covered
+- [ ] "What we'd add next": update for current state
+
+**§10 Lessons Learned:**
+- [ ] Add WHY rationale for: 3 engines, progressive disclosure, self-hosted Langfuse, dashboard redesign
+- [ ] Add reflections on knowledge loader, provider strategy, UI redesign
+
+### QUICKGUIDE.md updates
+- [ ] "4 pre-loaded incidents" → "12 pre-loaded incidents (dispatched, acknowledged, resolved, rejected, untriaged)"
+- [ ] Add engine switching instruction + Basic (free) engine path for judges
+- [ ] Update prerequisites: "At least one API key" (Anthropic OR free Google Gemini)
+- [ ] Update test counts to current numbers
+- [ ] Add chat view and explanation layers to test flow
+
+### README.md updates
+- [ ] Seed data: 4 → 12 incidents
+- [ ] Mention dashboard UI, chat view, explanation layers
+- [ ] Update test counts
+
+### Verification
+- [ ] Cross-check all numbers (patterns, seeds, tests, engines) against actual codebase before writing
+- [ ] No references to Phase 30/31 features unless already delivered
+
+---
+
+## Phase 36: Langfuse E2E Screenshots (Pending)
+
+**Goal**: Playwright tests that log into Langfuse, screenshot the traces dashboard before and after a triage, proving observability works end-to-end. Screenshots become visual evidence for AGENTS_USE.md and the demo video.
+
+### Credentials
+- URL: `http://localhost:3100`
+- Email: `admin@sre-triage.local`
+- Password: `admin123`
+- Auto-seeded at startup (no manual setup needed)
+
+### Test sequence
+
+| Test | Steps | Screenshots |
+|------|-------|------------|
+| **17 — Langfuse login** | Navigate to :3100, fill email/password, submit login form | `langfuse-login.png` |
+| **18 — Traces before triage** | Navigate to Traces page, screenshot existing seed traces | `traces-before.png` |
+| **19 — Triage + new trace** | Create incident via API, triage via API, navigate to Traces, verify new trace appears | `traces-after-triage.png` |
+| **20 — Trace detail waterfall** | Click into the new trace, screenshot the span waterfall (guardrail → context → triage → dispatch) | `trace-detail-waterfall.png` |
+| **21 — Sessions tab** | Navigate to Sessions tab, screenshot showing incident session_ids | `sessions-tab.png` |
+
+### Files to create/modify
+- [ ] `e2e/langfuse.spec.ts` — new spec file with 5 tests (serial, depends on Langfuse being up)
+- [ ] `e2e/screenshots/17-langfuse-login/` — auto-created by snap helper
+- [ ] `e2e/screenshots/18-langfuse-traces/` — before screenshots
+- [ ] `e2e/screenshots/19-langfuse-after-triage/` — after screenshots
+- [ ] `e2e/screenshots/20-langfuse-detail/` — waterfall screenshot
+- [ ] `e2e/screenshots/21-langfuse-sessions/` — sessions tab
+
+### Implementation notes
+- Langfuse v2 UI: login form is standard email/password, Traces page at `/traces`, Sessions at `/sessions`
+- Use `page.waitForSelector` generously — Langfuse dashboard loads async
+- Traces may take 1-2s to flush (Langfuse client calls `flush()` after each trace)
+- Add `test.setTimeout(30_000)` for Langfuse page loads
+- Reuse existing `snap()` helper from `full-flow.spec.ts`
+- Tests should be in a separate spec file so they can run independently
+
+### Selector strategy
+- Langfuse is a Next.js app — prefer `data-testid` if available, fall back to role/text selectors
+- Login form: `input[name="email"]`, `input[name="password"]`, `button[type="submit"]`
+- Traces table: look for table rows containing "incident-triage-pipeline"
+- If Langfuse selectors prove too fragile, fall back to full-page screenshots with `page.waitForLoadState("networkidle")`
+
+### No backend changes. Screenshots auto-saved to e2e/screenshots/.
+
+---
+
+## Dependency Graph (Phases 30-36)
+```
+Phase 30 (Guardrail Hardening) — independent
+Phase 31 (Provider Fallback) — independent
+Phase 32 (REQUIREMENTS.md) — references 30/31 scope
+Phase 33 (VIDEO-SCRIPT-BRIEF.md) — references 30/31 as differentiators
+Phase 34 (Onboarding Tooltips) — independent (UI only)
+Phase 35 (Doc Refresh) — should run AFTER 30/31 so docs reflect final state
+Phase 36 (Langfuse E2E) — independent, needs Langfuse + app running
+
+Recommended order: 30 + 31 (parallel) → 32 + 33 + 34 (parallel) → 35 + 36 (parallel) → 12
+Phase 12 (Demo) runs last after all phases complete.
 ```
 
 ---
