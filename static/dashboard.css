@@ -176,13 +176,13 @@ body {
 }
 .panel:hover { border-color: rgba(59,130,246,0.2); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
 .panel-header {
-  padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  padding: 10px 14px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
   color: var(--text-dim); border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 6px;
 }
 .panel-header span { margin-left: auto; }
 .panel-body { padding: 14px; }
-.section-icon { width: 18px; height: 18px; image-rendering: pixelated; flex-shrink: 0; }
+.section-icon { width: 22px; height: 22px; image-rendering: pixelated; flex-shrink: 0; }
 
 .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .detail-stack { display: flex; flex-direction: column; gap: 12px; }
@@ -573,6 +573,7 @@ html.light .dispatch-body { background: rgba(0,0,0,0.04); }
   transition: all 0.2s var(--spring);
 }
 .explain-tab:hover { color: var(--text); }
+.tab-icon { width: 14px; height: 14px; image-rendering: pixelated; vertical-align: middle; margin-right: 2px; }
 .explain-tab.active { background: rgba(59,130,246,0.15); color: var(--accent); }
 .explain-content { display: none; }
 .explain-content.active { display: block; animation: viewIn 0.25s var(--spring) both; }
