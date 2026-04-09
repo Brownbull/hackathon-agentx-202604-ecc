@@ -76,58 +76,65 @@ The triage agent supports three interchangeable engine backends. The user select
 
 ## 3. Architecture & Orchestration
 
-### Architecture Diagram
+### Pipeline Sequence
 
-```
-                    +------------------+
-                    |   User / SRE     |
-                    |  (Browser/API)   |
-                    +--------+---------+
-                             |
-                    +--------v---------+
-                    |    FastAPI +      |
-                    |   HTMX / UI      |
-                    +--------+---------+
-                             |
-              +--------------v--------------+
-              |      GUARDRAIL STAGE        |
-              |  * Injection detection      |
-              |  * PII scan (flag only)     |
-              |  * Rate limiting            |
-              |  -> Block if score >= 0.90  |
-              |  -> Langfuse trace on block |
-              +--------------+--------------+
-                             |
-              +--------------v--------------+
-              |   ENGINE SELECTION STAGE    |
-              |  User selects:              |
-              |  * Basic (LangChain+Gemini) |
-              |  * Premium (Anthropic SDK)  |
-              |  * Experimental (Managed)   |
-              +--------------+--------------+
-                             |
-              +--------------v--------------+
-              |       TRIAGE STAGE          |
-              |  1. Load knowledge base     |
-              |  2. Search relevant files   |
-              |  3. Call selected engine     |
-              |  4. Extract triage result   |
-              |  -> Langfuse trace on error |
-              +--------------+--------------+
-                             |
-              +--------------v--------------+
-              |      DISPATCH STAGE         |
-              |  * Create ticket            |
-              |  * Email on-call team       |
-              |  * Chat to #incidents       |
-              +--------------+--------------+
-                             |
-              +--------------v--------------+
-              |     RESOLUTION STAGE        |
-              |  * Acknowledge (manual)     |
-              |  * Resolve + notes          |
-              |  * Notify reporter          |
-              +-----------------------------+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as HTMX Dashboard
+    participant API as FastAPI
+    participant GR as Guardrail
+    participant KL as Knowledge Loader
+    participant IX as Codebase Index
+    participant LLM as Triage Engine
+    participant DB as PostgreSQL
+    participant LF as Langfuse
+    participant DS as Dispatch Service
+
+    User->>UI: Submit incident + select engine
+    UI->>API: POST /api/incidents
+    API->>GR: validate_input(description)
+
+    alt Injection score >= 0.90
+        GR-->>API: REJECTED
+        API->>DB: Save incident (status=rejected)
+        API->>LF: trace_guardrail_rejection()
+        API-->>UI: 400 + rejection details
+    else Input passes
+        GR-->>API: PASS (score, PII flags)
+        API->>DB: Save incident (status=submitted)
+        API-->>UI: 201 Created, redirect to detail
+    end
+
+    UI->>API: POST /api/incidents/{id}/triage
+    API->>DB: Set status=triaging
+
+    par Build context
+        API->>KL: load_knowledge(description)
+        KL-->>API: L0 + L1 + matched L2 docs
+        API->>IX: search_files(description)
+        IX-->>API: Top 5 relevant files
+    end
+
+    API->>LLM: system_prompt + knowledge + files + description
+    API->>LF: Start pipeline trace
+
+    alt Triage succeeds
+        LLM-->>API: TriageResult (structured JSON)
+        API->>API: Verify files exist + sanitize PII
+        API->>DB: Save triage results (status=dispatched)
+        API->>DS: dispatch_incident()
+        DS->>DB: Create ticket
+        DS->>DB: Create email notification (on-call)
+        DS->>DB: Create chat notification
+        API->>LF: Complete pipeline trace
+        API-->>UI: 200 + full triage results
+    else Triage fails
+        LLM-->>API: Error or timeout
+        API->>DB: Revert status=submitted
+        API->>LF: trace_triage_error()
+        API-->>UI: 502 + error message
+    end
 ```
 
 - **Orchestration approach:** Sequential pipeline — each stage feeds the next. Guardrail runs synchronously before triage; dispatch runs automatically after triage succeeds. Auto-triage on submit chains creation directly into triage.
@@ -139,6 +146,58 @@ The triage agent supports three interchangeable engine backends. The user select
 ---
 
 ## 4. Context Engineering
+
+### Context Engineering Flow
+
+```mermaid
+graph LR
+    subgraph Input
+        DESC["Incident Description"]
+    end
+
+    subgraph Indexing["Codebase Index (built at startup)"]
+        SCAN["Scan Solidus repo<br/>.rb .erb .js .ts .yml"]
+        KW["Extract keywords<br/>class names, methods<br/>Rails associations"]
+        IDX[("Keyword Index<br/>~30K LOC")]
+        SCAN --> KW --> IDX
+    end
+
+    subgraph Knowledge["Progressive Knowledge Base"]
+        direction TB
+        L0["L0 Architecture Map<br/>~500 tokens (always)"]
+        L1["L1 Component Index<br/>~1500 tokens (always)"]
+        L2["L2 Domain Deep-Dives<br/>~900 tokens (keyword-matched)<br/>payment, inventory, orders<br/>search, auth, shipping"]
+        L3["L3 Source Code<br/>First 80 lines (fallback)"]
+        L0 --- L1 --- L2 --- L3
+    end
+
+    subgraph Search["Relevance Search"]
+        TOK["Tokenize description"]
+        SCORE["Score by keyword overlap"]
+        BOOST["Boost .rb 1.5x<br/>models/controllers 1.3x"]
+        TOP5["Top 5 files with snippets"]
+        TOK --> SCORE --> BOOST --> TOP5
+    end
+
+    subgraph LLMCall["LLM Prompt Assembly"]
+        SYS["System prompt ~500 tok"]
+        CTX["Knowledge ~1000 tok"]
+        FILES["File snippets ~3000 tok"]
+        INC["Incident ~500 tok"]
+        TOTAL["Total: 3000-5000 input tokens"]
+        SYS --> TOTAL
+        CTX --> TOTAL
+        FILES --> TOTAL
+        INC --> TOTAL
+    end
+
+    DESC --> TOK
+    DESC --> L2
+    IDX --> SCORE
+    Knowledge --> CTX
+    TOP5 --> FILES
+    DESC --> INC
+```
 
 - **Context sources:**
   - User-submitted incident description (free text, up to 10KB)

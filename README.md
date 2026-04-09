@@ -101,26 +101,77 @@ The submit form and detail page auto-detect which engines are configured and dis
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph DockerCompose["Docker Compose"]
+        direction TB
+        User["User / SRE<br/>(Browser)"]
+
+        subgraph App["FastAPI Application :8100"]
+            direction TB
+            UI["HTMX + Jinja2<br/>Ops Dashboard"]
+            API["REST API<br/>/api/incidents"]
+
+            subgraph Pipeline["Agent Pipeline"]
+                direction TB
+                GR["Guardrail<br/>Injection - PII - Rate Limit"]
+                KB["Knowledge Base<br/>L0 Architecture - L1 Components<br/>- L2 Domain - L3 Source"]
+
+                subgraph Engines["Triage Engines"]
+                    direction LR
+                    E1["Basic<br/>Gemini 2.5 Flash<br/>(LangChain)"]
+                    E2["Premium<br/>Claude Haiku 4.5<br/>(Anthropic SDK)"]
+                    E3["Experimental<br/>Claude Agent SDK<br/>(Managed Agents)"]
+                end
+
+                VF["Verify + PII Sanitize"]
+                DP["Dispatch<br/>Ticket - Email - Chat"]
+            end
+        end
+
+        PG[("PostgreSQL<br/>:5433")]
+        RD[("Redis<br/>:6380")]
+        LF["Langfuse<br/>:3100<br/>(LLM Observability)"]
+        SOL["Solidus Repo<br/>(cloned at startup)"]
+    end
+
+    ExtAnthropic["Anthropic API"]
+    ExtGoogle["Google Gemini API"]
+
+    User --> UI
+    UI --> API
+    API --> GR
+    GR --> KB
+    KB --> Engines
+    E2 -.-> ExtAnthropic
+    E1 -.-> ExtGoogle
+    E3 -.-> ExtAnthropic
+    Engines --> VF
+    VF --> DP
+    DP --> PG
+    API --> PG
+    GR --> RD
+    KB --> SOL
+    App -.-> LF
 ```
-User -> FastAPI + HTMX Dashboard
-         |
-    Guardrail (injection detection, PII scan, rate limiting)
-         |
-    Engine Router --- Basic (LangChain + Gemini/Groq)
-         |          |-- Premium (Anthropic SDK + Claude Haiku)
-         |          \-- Experimental (Managed Agents -- autonomous)
-         |
-    Knowledge Base (L0 architecture -> L1 components -> L2 domain deep-dive)
-         |
-    VERIFY (check related files exist in codebase)
-         |
-    PII Sanitization (strip PII from outputs)
-         |
-    Dispatch (ticket + email + chat notifications)
-         |
-    Observability (OpenTelemetry spans + Langfuse LLM traces)
-         |
-    Resolution (acknowledge -> resolve -> notify reporter)
+
+## Incident Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> submitted : User submits incident
+
+    submitted --> triaging : Triage triggered (select engine)
+    submitted --> rejected : Guardrail blocks (score >= 0.90)
+
+    triaging --> dispatched : Triage succeeds — auto-create ticket, email on-call, chat
+    triaging --> submitted : Triage fails (API error) — revert for retry
+
+    dispatched --> dispatched : Acknowledge (ticket in_progress)
+    dispatched --> resolved : Resolve — type + notes, email reporter
+
+    rejected --> [*] : Terminal
+    resolved --> [*] : Terminal
 ```
 
 ## Key Features
