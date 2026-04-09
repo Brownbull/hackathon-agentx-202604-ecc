@@ -20,6 +20,12 @@ async function snap(page: Page, name: string) {
   }
 }
 
+// Dismiss onboarding overlay
+test.beforeEach(async ({ page }) => {
+  await page.goto(BASE);
+  await page.evaluate(() => localStorage.setItem("sre-onboarding-done", "1"));
+});
+
 // Find a dispatched incident from the list page
 async function findIncidentByStatus(
   page: Page,

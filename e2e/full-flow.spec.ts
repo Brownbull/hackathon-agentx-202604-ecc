@@ -8,6 +8,11 @@ const BASE = "http://localhost:8100";
 // Shared state across serial tests
 let incidentId: string;
 
+// Dismiss the onboarding overlay so it doesn't block clicks
+async function dismissOnboarding(page: Page) {
+  await page.evaluate(() => localStorage.setItem("sre-onboarding-done", "1"));
+}
+
 // Helper: save a named screenshot into a per-test folder
 async function snap(page: Page, testFolder: string, name: string) {
   const dir = path.join(SCREENSHOTS_ROOT, testFolder);
@@ -53,6 +58,12 @@ async function triageViaAPI(id: string): Promise<void> {
     throw new Error(`Triage failed (${resp.status}): ${body}`);
   }
 }
+
+// Set localStorage before each test to prevent onboarding overlay from blocking clicks
+test.beforeEach(async ({ page }) => {
+  await page.goto(BASE);
+  await dismissOnboarding(page);
+});
 
 // ---------------------------------------------------------------------------
 // 01. Incident list (dashboard layout)
@@ -117,7 +128,7 @@ test("04 — Detail page shows untriaged incident with triage button", async ({
 
   await page.goto(`/incidents/${incidentId}`);
   await expect(page.locator(".desc-text").first()).toContainText("Payment gateway");
-  await expect(page.getByText("not been triaged yet")).toBeVisible();
+  await expect(page.getByText("Select a triage engine")).toBeVisible();
   await expect(page.locator('[data-testid="btn-triage"]')).toBeVisible();
   await snap(page, "04-untriaged", "detail-awaiting-triage");
 });
@@ -159,9 +170,9 @@ test("06 — Verify dispatch panel with ticket and notifications", async ({
 
   await page.goto(`/incidents/${incidentId}`);
 
-  // Dispatch section visible with compact rows
-  await expect(page.locator(".dispatch-compact").first()).toBeVisible();
-  await expect(page.locator("text=Ticket created")).toBeVisible();
+  // Dispatch section visible with expandable cards
+  await expect(page.locator('[data-testid="dispatch-ticket"]').first()).toBeVisible();
+  await expect(page.getByText("Ticket created")).toBeVisible();
 
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await snap(page, "06-dispatch", "dispatch-panel");
