@@ -303,7 +303,7 @@ async def triage_incident(
         guardrail=guardrail_data,
         context_retrieval=context_data,
         generation={
-            "model": "claude-haiku-4-5-20251001",
+            "model": triage_result.engine,
             "input": incident.description,
             "output": str({
                 "severity": triage_result.severity,
@@ -323,6 +323,8 @@ async def triage_incident(
             "confidence": triage_result.confidence,
             "affected_component": triage_result.affected_component,
             "suggested_assignee": triage_result.suggested_assignee,
+            "engine": triage_result.engine,
+            "attachments": attachment_descriptions,
         },
         dispatch={
             "ticket_id": dispatch_result.ticket_id,
