@@ -28,8 +28,8 @@ No Python, Node.js, or database install needed — everything runs in Docker.
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/brownbull/sre-triage-agent.git
-cd sre-triage-agent
+git clone https://github.com/Brownbull/hackathon-agentx-202604-ecc.git
+cd hackathon-agentx-202604-ecc
 
 # 2. Copy environment file
 cp .env.example .env
