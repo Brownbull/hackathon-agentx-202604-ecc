@@ -212,7 +212,22 @@ body {
 .attach-icon.attach-img { color: var(--accent); }
 
 /* Horizontal scroll wrapper */
-.table-scroll-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Horizontal scroll — always show scrollbar */
+.table-scroll-wrapper {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.table-scroll-wrapper::-webkit-scrollbar { height: 8px; }
+.table-scroll-wrapper::-webkit-scrollbar-track {
+  background: var(--panel); border-radius: 4px;
+}
+.table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border); border-radius: 4px;
+}
+.table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}
+/* Firefox */
+.table-scroll-wrapper { scrollbar-width: thin; scrollbar-color: var(--border) var(--panel); }
 
 /* Sort links in table headers */
 .sort-link {

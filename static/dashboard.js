@@ -419,6 +419,17 @@
     localStorage.setItem('sre-onboarding-done', '1');
   };
 
+  window.relaunchOnboarding = function() {
+    localStorage.removeItem('sre-onboarding-done');
+    onboardingIdx = 0;
+    // Navigate to list page if not already there
+    if (window.location.pathname !== '/incidents') {
+      window.location.href = '/incidents';
+      return;
+    }
+    showOnboardingStep();
+  };
+
   // Show on first visit to list page
   if (!localStorage.getItem('sre-onboarding-done') && window.location.pathname === '/incidents') {
     setTimeout(showOnboardingStep, 800);

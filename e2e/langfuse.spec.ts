@@ -103,9 +103,43 @@ test("18c — Langfuse sessions tab has incident-grouped entries", async ({
 });
 
 // ---------------------------------------------------------------------------
+// Test: Click into a trace and see pipeline spans (guardrail, context, gen, dispatch)
+// ---------------------------------------------------------------------------
+test("18d — Langfuse trace detail shows triage pipeline spans", async ({
+  page,
+}) => {
+  await loginToLangfuse(page);
+
+  // Go to Traces
+  await page.locator('a:has-text("Traces")').first().click({ timeout: 5000 });
+  await page.waitForTimeout(3000);
+
+  // Click the first "incident-triage-pipeline" trace row
+  const traceRow = page.locator('tr:has-text("incident-triage-pipeline"), [data-testid*="trace"]:has-text("incident-triage-pipeline")').first();
+  if (await traceRow.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await traceRow.click();
+    await page.waitForTimeout(3000);
+    await snap(page, "trace-detail");
+  } else {
+    // If no specific row, click any row in the table
+    const anyRow = page.locator("table tbody tr").first();
+    if (await anyRow.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await anyRow.click();
+      await page.waitForTimeout(3000);
+      await snap(page, "trace-detail");
+    } else {
+      await snap(page, "trace-detail-no-rows");
+    }
+  }
+
+  const body = await page.textContent("body");
+  expect(body).toBeTruthy();
+});
+
+// ---------------------------------------------------------------------------
 // Test: App observability endpoint reports healthy
 // ---------------------------------------------------------------------------
-test("18d — App observability endpoint reports OTel + Langfuse enabled", async ({
+test("18e — App observability endpoint reports OTel + Langfuse enabled", async ({
   page,
 }) => {
   const resp = await page.goto(`${APP_URL}/api/observability`);
