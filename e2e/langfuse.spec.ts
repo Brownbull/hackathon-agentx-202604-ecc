@@ -110,30 +110,57 @@ test("18d — Langfuse trace detail shows triage pipeline spans", async ({
 }) => {
   await loginToLangfuse(page);
 
-  // Go to Traces
-  await page.locator('a:has-text("Traces")').first().click({ timeout: 5000 });
+  // Get the project ID from the current URL after login
+  const projectUrl = page.url();
+  const projectMatch = projectUrl.match(/\/project\/([^/?]+)/);
+  const projectId = projectMatch ? projectMatch[1] : "";
+
+  // Navigate to the Traces page
+  if (projectId) {
+    await page.goto(`${LANGFUSE_URL}/project/${projectId}/traces`);
+  } else {
+    await page.locator('a:has-text("Traces")').first().click({ timeout: 5000 });
+  }
   await page.waitForTimeout(3000);
 
-  // Click the first "incident-triage-pipeline" trace row
-  const traceRow = page.locator('tr:has-text("incident-triage-pipeline"), [data-testid*="trace"]:has-text("incident-triage-pipeline")').first();
-  if (await traceRow.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await traceRow.click();
-    await page.waitForTimeout(3000);
-    await snap(page, "trace-detail");
-  } else {
-    // If no specific row, click any row in the table
-    const anyRow = page.locator("table tbody tr").first();
-    if (await anyRow.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await anyRow.click();
-      await page.waitForTimeout(3000);
-      await snap(page, "trace-detail");
-    } else {
-      await snap(page, "trace-detail-no-rows");
-    }
-  }
+  await snap(page, "traces-list-full");
 
-  const body = await page.textContent("body");
-  expect(body).toBeTruthy();
+  // Extract a pipeline trace detail URL (skip rejection traces)
+  const detailUrl = await page.evaluate(() => {
+    const rows = document.querySelectorAll("table tbody tr");
+    for (const row of rows) {
+      const text = row.textContent || "";
+      if (text.includes("incident-triage-pipeline")) {
+        const link = row.querySelector("a[href*='/traces/']");
+        if (link) return link.getAttribute("href");
+      }
+    }
+    return null;
+  });
+
+  if (detailUrl) {
+    const fullUrl = detailUrl.startsWith("http")
+      ? detailUrl
+      : `${LANGFUSE_URL}${detailUrl}`;
+    await page.goto(fullUrl);
+    await page.waitForTimeout(4000);
+    await snap(page, "trace-detail");
+
+    // Verify we see the span tree (guardrail, context-retrieval, triage-generation, dispatch)
+    const body = await page.textContent("body") || "";
+    expect(
+      body.includes("guardrail") ||
+      body.includes("context-retrieval") ||
+      body.includes("triage-generation") ||
+      body.includes("dispatch") ||
+      body.includes("Trace Detail")
+    ).toBeTruthy();
+  } else {
+    // Fallback: traces list itself shows pipeline content
+    await snap(page, "trace-detail-fallback");
+    const body = await page.textContent("body") || "";
+    expect(body.includes("incident-triage-pipeline")).toBeTruthy();
+  }
 });
 
 // ---------------------------------------------------------------------------
