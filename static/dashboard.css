@@ -178,10 +178,11 @@ body {
 .panel-header {
   padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
   color: var(--text-dim); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 6px;
 }
+.panel-header span { margin-left: auto; }
 .panel-body { padding: 14px; }
-.section-icon { width: 18px; height: 18px; image-rendering: pixelated; vertical-align: middle; margin-right: 4px; }
+.section-icon { width: 18px; height: 18px; image-rendering: pixelated; flex-shrink: 0; }
 
 .compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .detail-stack { display: flex; flex-direction: column; gap: 12px; }
