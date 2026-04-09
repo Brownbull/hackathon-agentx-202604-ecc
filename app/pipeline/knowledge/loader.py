@@ -8,7 +8,6 @@ Loads curated codebase knowledge in layers:
 """
 
 import logging
-import os
 from pathlib import Path
 
 from app.config import settings

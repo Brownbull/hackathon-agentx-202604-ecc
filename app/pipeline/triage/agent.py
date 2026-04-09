@@ -10,7 +10,6 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-import anthropic
 from pydantic import BaseModel, Field
 from typing import Literal
 
