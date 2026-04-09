@@ -281,6 +281,19 @@ app/
 | Langfuse shows empty traces/sessions | Restart app: `docker compose restart app` — seed runs on startup |
 | Database errors after code changes | Reset volumes: `docker compose down -v && docker compose up --build -d` |
 
+## Future Improvements
+
+Based on a [dependency analysis](dependency-diagrams/ANALYSIS-REPORT.md) of the `app/` module (37 modules, 75 edges):
+
+| Priority | Finding | Criticality | Fix |
+|----------|---------|-------------|-----|
+| Enterprise | **Triage provider circular deps** (4 cycles) | Medium | Extract shared types (`TriageResult`, `TRIAGE_TOOL`, etc.) into `app/pipeline/triage/types.py` to break `agent ↔ provider ↔ concrete_providers` cycle |
+| Enterprise | **Fat controller** (`routes/incidents.py` — 557 lines) | Medium | Extract triage orchestration into `app/pipeline/orchestrator.py` and attachment routes into `app/routes/attachments.py` |
+| Scale | **Model ORM cycles** (2 cycles) | Low | Already mitigated with `TYPE_CHECKING` guards — no action needed |
+| Scale | **Layer violation** (`seed_data` → `pipeline`) | Low | Move `seed_data.py` to `app/scripts/` (dev-only, no production impact) |
+
+See [PLAN.md](PLAN.md#future-improvements--dependency-analysis-apr-9-2026) for full details and the [dependency graph SVG](dependency-diagrams/dependency-graph.svg).
+
 ## License
 
 [MIT](LICENSE)

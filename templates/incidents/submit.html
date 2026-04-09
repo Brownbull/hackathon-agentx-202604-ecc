@@ -65,7 +65,9 @@
             var msg = 'Something went wrong. Please try again.';
             try {
                 var err = JSON.parse(event.detail.xhr.responseText);
-                msg = err.detail || msg;
+                var detail = err.detail;
+                if (Array.isArray(detail)) detail = detail.map(function(e) { return e.msg || JSON.stringify(e); }).join('; ');
+                msg = detail || msg;
             } catch(e) {}
             resultDiv.innerHTML =
                 '<div class="alert alert-error">&#9888; ' + msg + '</div>';
