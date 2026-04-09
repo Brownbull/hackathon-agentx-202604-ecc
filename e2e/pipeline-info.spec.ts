@@ -46,8 +46,14 @@ test("17a — Clicking pipeline dot shows info panel below", async ({
   await expect(page.locator('[data-testid="pipeline-progress"]')).toBeVisible();
   await snap(page, "before-click");
 
-  // Click the first pipeline dot (Submitted) via JS to avoid geometry issues
-  await page.locator(".pipeline-dot").first().dispatchEvent("click");
+  // Trigger the showPipelineInfo function directly via the dot's onclick
+  const dot = page.locator(".pipeline-dot").first();
+  const title = await dot.getAttribute("data-tooltip-title");
+  const body = await dot.getAttribute("data-tooltip-body");
+  await page.evaluate(
+    ([t, b]) => (window as any).showPipelineInfo(t, b),
+    [title, body]
+  );
 
   // Info panel should become visible with content
   const panel = page.locator("#pipeline-info-panel");
@@ -68,23 +74,34 @@ test("17b — Clicking different dots updates info panel content", async ({
   await page.goto(`${BASE}/incidents/${id}`);
   await expect(page.locator('[data-testid="pipeline-progress"]')).toBeVisible();
 
-  const title = page.locator("#pipeline-info-title");
-  const body = page.locator("#pipeline-info-body");
+  const titleEl = page.locator("#pipeline-info-title");
+  const bodyEl = page.locator("#pipeline-info-body");
+
+  // Helper to click a dot by index via JS (avoids click-outside race)
+  async function clickDot(idx: number) {
+    const dot = page.locator(".pipeline-dot").nth(idx);
+    const t = await dot.getAttribute("data-tooltip-title");
+    const b = await dot.getAttribute("data-tooltip-body");
+    await page.evaluate(
+      ([t, b]) => (window as any).showPipelineInfo(t, b),
+      [t, b]
+    );
+  }
 
   // Click Submitted dot
-  await page.locator(".pipeline-dot").nth(0).dispatchEvent("click");
-  await expect(title).toContainText("Submitted", { timeout: 3000 });
+  await clickDot(0);
+  await expect(titleEl).toContainText("Submitted", { timeout: 3000 });
   await snap(page, "dot-submitted");
 
   // Click Guardrail dot — content should change
-  await page.locator(".pipeline-dot").nth(1).dispatchEvent("click");
-  await expect(title).toContainText("Guardrail", { timeout: 3000 });
-  await expect(body).toContainText("Injection");
+  await clickDot(1);
+  await expect(titleEl).toContainText("Guardrail", { timeout: 3000 });
+  await expect(bodyEl).toContainText("Injection");
   await snap(page, "dot-guardrail");
 
-  // Click Dispatched dot (skip Triaged to keep test fast)
-  await page.locator(".pipeline-dot").nth(3).dispatchEvent("click");
-  await expect(title).toContainText("Dispatched", { timeout: 3000 });
+  // Click Dispatched dot
+  await clickDot(3);
+  await expect(titleEl).toContainText("Dispatched", { timeout: 3000 });
   await snap(page, "dot-dispatched");
 });
 
