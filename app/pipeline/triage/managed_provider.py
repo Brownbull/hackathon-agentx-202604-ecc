@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 API_BASE = "https://api.anthropic.com/v1"
 POLL_INTERVAL_S = 3
-MAX_POLL_S = 300  # 5 minute timeout
+MAX_POLL_S = 420  # 7 minute timeout (agent takes 3-5min with Haiku)
 
 
 class ManagedProvider:
@@ -104,8 +104,10 @@ class ManagedProvider:
                 if status == "idle":
                     logger.info("ManagedProvider: agent completed after %.0fs", elapsed)
                     break
-                elif status in ("error", "failed"):
+                elif status in ("error", "failed", "terminated"):
                     raise RuntimeError(f"Managed agent session failed: {status}")
+                elif int(elapsed) % 30 == 0:
+                    logger.info("ManagedProvider: still running (%.0fs elapsed, status=%s)", elapsed, status)
             else:
                 raise TimeoutError(f"Managed agent timed out after {MAX_POLL_S}s")
 
@@ -115,7 +117,8 @@ class ManagedProvider:
             events = events_resp.json().get("data", [])
 
             for event in events:
-                if event.get("type") == "agent.custom_tool_use" and event.get("name") == "submit_triage":
+                etype = event.get("type", "")
+                if etype in ("agent.custom_tool_use", "agent.tool_use") and event.get("name") == "submit_triage":
                     data = event.get("input", {})
                     return TriageResult(
                         severity=data["severity"],
