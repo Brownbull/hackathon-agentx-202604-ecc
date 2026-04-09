@@ -35,6 +35,8 @@
 | **24. Enrich Detail Page** | Pipeline progress, engine badge, expandable dispatch, component | MUST | ✅ Done | `8fa7d50` | — |
 | **25. Explanation Layers** | General / Specialist / Non-technical views of diagnosis | SHOULD | ✅ Done | `8242dcf` | — |
 | **26. Responsive Layout** | Desktop portrait/landscape + mobile (<768px) | SHOULD | ✅ Done | `8242dcf` | — |
+| **27. Pipeline Tooltips** | Click pipeline dots → popup with stage details, auto-dismiss 5s | SHOULD | 🔲 Pending | — | — |
+| **28. Realistic Seed Data** | 12 incidents: mixed lifecycles, attachments, guardrail rejections | MUST | 🔲 Pending | — | — |
 | **12. Demo Video** | 3-min YouTube walkthrough | MUST | 🔲 Pending | — | — |
 
 **Test total: 80 pytest + 16 Playwright E2E**
@@ -406,6 +408,69 @@ Phase 22 (PII) — independent, can run anytime
 Phase 23 (Store data) ──→ Phase 24 (Enrich detail page)
                      └──→ Phase 25 (Explanation layers)
 Phase 26 (Responsive) — independent, can run anytime
+```
+
+---
+
+## Phase 27: Pipeline Step Tooltips (Pending)
+
+**Goal**: Click a pipeline dot → popup with stage description and outcome for this incident. Auto-dismiss after 5s or click X.
+
+### Tooltip content per stage
+| Stage | Description | Dynamic data |
+|-------|-------------|-------------|
+| Submitted | Incident received from reporter | Reporter email, timestamp |
+| Guardrail | Input scanned for injection and PII | Injection score, clean/flagged |
+| Triaged | AI agent analyzed against codebase | Engine used, confidence, duration |
+| Dispatched | Ticket created, team notified | Team, ticket status, channels |
+| Resolved | Incident closed with resolution | Resolution type, notes, timestamp |
+
+### Files
+- [ ] `templates/incidents/dashboard_detail.html` — tooltip markup per pipeline step
+- [ ] `static/dashboard.css` — tooltip positioning, animation, auto-dismiss
+- [ ] `static/dashboard.js` — click handler, 5s timer, close button
+
+---
+
+## Phase 28: Realistic Seed Data (Pending)
+
+**Goal**: Expand seed data from 4 to 12 incidents covering all platform scenarios: multiple engines, attachments, guardrail rejections, and mixed lifecycle states.
+
+### Seed incident matrix
+
+| # | Scenario | Status | Engine | Attachments | Guardrail | Lifecycle |
+|---|----------|--------|--------|-------------|-----------|-----------|
+| 1 | Payment 502 (existing) | Dispatched | anthropic | — | Clean | — |
+| 2 | Search index empty (existing) | Dispatched | anthropic | — | Clean | — |
+| 3 | Admin 403 (existing) | Dispatched | anthropic | — | Clean | — |
+| 4 | Variant timeout (existing) | Dispatched | anthropic | — | Clean | — |
+| 5 | Checkout failure + error log | Dispatched | langchain | `.log` file | Clean | — |
+| 6 | Inventory mismatch + screenshot | Dispatched | anthropic | `.png` file | Clean | — |
+| 7 | Auth lockout → acknowledged | Dispatched | anthropic | — | Clean | Ticket: in_progress |
+| 8 | Shipping calc → resolved (fix) | Resolved | anthropic | — | Clean | resolution_type: fix |
+| 9 | Order stuck → resolved (workaround) | Resolved | langchain | — | Clean | resolution_type: workaround |
+| 10 | Prompt injection attempt | Rejected | — | — | Blocked (injection: 92%) | — |
+| 11 | SQL injection attempt | Rejected | — | — | Blocked (injection: 88%) | — |
+| 12 | Fresh untriaged report | Submitted | — | — | Clean | For demo triage |
+
+### Mock attachment files
+- [ ] `app/services/seed_attachments/server-error.log` — mock log with stack traces
+- [ ] `app/services/seed_attachments/error-screenshot.png` — 1x1 red pixel PNG
+
+### Changes
+- [ ] `app/services/seed_data.py` — expand SEED_INCIDENTS with incidents 5-12, mixed states
+- [ ] Acknowledged incidents: create ticket with `status=IN_PROGRESS`
+- [ ] Resolved incidents: set `resolved_at`, `resolution_type`, `resolution_notes`, notify reporter
+- [ ] Rejected incidents: set `status=REJECTED`, `injection_score=0.92`, `validation_flags={passed: false}`
+- [ ] Submitted incident: just the report, no triage (for live demo)
+
+---
+
+## Dependency Graph (Phases 27-28)
+```
+Phase 27 (Tooltips) — independent
+Phase 28 (Seed Data) — independent
+Both can run in parallel. Phase 12 (Demo) runs last.
 ```
 
 ---
