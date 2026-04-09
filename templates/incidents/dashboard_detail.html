@@ -9,7 +9,7 @@
 <span class="badge badge-{{ incident.status.value }}" data-testid="topbar-status">{{ incident.status.value|capitalize }}</span>
 
 {% if incident.severity %}
-<span class="badge badge-{{ incident.severity|lower }}" data-testid="topbar-severity">{{ incident.severity }}</span>
+<span class="badge badge-{{ incident.severity.value|lower }}" data-testid="topbar-severity">{{ incident.severity.value }}</span>
 {% endif %}
 
 {% if incident.suggested_assignee %}
@@ -62,7 +62,7 @@
   <div class="kpi-strip" data-testid="kpi-strip">
     <div class="kpi">
       <div class="kpi-label">Severity</div>
-      <div class="kpi-value {% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% else %}blue{% endif %}">{{ incident.severity }}</div>
+      <div class="kpi-value {% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% else %}blue{% endif %}">{{ incident.severity.value }}</div>
       <div class="kpi-sub">{% if incident.severity == 'P1' %}Critical{% elif incident.severity == 'P2' %}Major{% elif incident.severity == 'P3' %}Minor{% else %}Low{% endif %}</div>
     </div>
     <div class="kpi">

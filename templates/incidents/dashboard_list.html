@@ -38,7 +38,7 @@
           <td><span class="badge badge-{{ inc.status.value }}">{{ inc.status.value|capitalize }}</span></td>
           <td>
             {% if inc.severity %}
-            <span class="badge badge-{{ inc.severity|lower }}">{{ inc.severity }}</span>
+            <span class="badge badge-{{ inc.severity.value|lower }}">{{ inc.severity.value }}</span>
             {% else %}
             <span class="badge" style="background:rgba(100,116,139,0.1);color:var(--text-dim)">&mdash;</span>
             {% endif %}

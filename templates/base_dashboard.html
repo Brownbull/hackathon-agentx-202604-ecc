@@ -37,7 +37,7 @@
       <div class="inc-desc">{{ inc.description[:50] }}</div>
       <div class="inc-badges">
         {% if inc.severity %}
-        <span class="inc-badge badge-{{ inc.severity|lower }}">{{ inc.severity }}</span>
+        <span class="inc-badge badge-{{ inc.severity.value|lower }}">{{ inc.severity.value }}</span>
         {% endif %}
         <span class="inc-badge badge-{{ inc.status.value }}">{{ inc.status.value|capitalize }}</span>
       </div>

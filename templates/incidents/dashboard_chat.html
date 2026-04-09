@@ -9,7 +9,7 @@
 <span class="badge badge-{{ incident.status.value }}" data-testid="topbar-status">{{ incident.status.value|capitalize }}</span>
 
 {% if incident.severity %}
-<span class="badge badge-{{ incident.severity|lower }}" data-testid="topbar-severity">{{ incident.severity }}</span>
+<span class="badge badge-{{ incident.severity.value|lower }}" data-testid="topbar-severity">{{ incident.severity.value }}</span>
 {% endif %}
 
 {% if incident.suggested_assignee %}
@@ -84,7 +84,7 @@
           {{ incident.technical_summary[:200] if incident.technical_summary else 'Triage assessment generated.' }}
           <div class="context-card">
             <h4>Triage Assessment</h4>
-            <div class="data-row"><span class="data-label">Severity</span><span class="data-value {% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% endif %}" style="color: var(--{% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% else %}accent{% endif %})">{{ incident.severity }}</span></div>
+            <div class="data-row"><span class="data-label">Severity</span><span class="data-value {% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% endif %}" style="color: var(--{% if incident.severity == 'P1' %}red{% elif incident.severity == 'P2' %}yellow{% else %}accent{% endif %})">{{ incident.severity.value }}</span></div>
             <div class="data-row"><span class="data-label">Category</span><span class="data-value">{{ incident.category|default('—')|replace('-',' ')|title }}</span></div>
             <div class="data-row"><span class="data-label">Component</span><span class="data-value">{{ incident.affected_component|default('—') }}</span></div>
             <div class="data-row"><span class="data-label">Confidence</span><span class="data-value" style="color:var(--green)">{{ (incident.confidence * 100)|int if incident.confidence else 0 }}%</span></div>
